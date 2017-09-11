@@ -1,2 +1,2 @@
-# starcraft2ai
+# Starcraft 2 AI
 Keep it one line.
