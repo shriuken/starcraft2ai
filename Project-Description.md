@@ -1,16 +1,10 @@
-Submit on BB a link to your project repository.
-
-At a minimum your project description should include the following 8 items:
-
-project background description
-
-project problem statement
-
-inadequacy of current solutions to problem
-
-background skills/interests applicable to problem
-
-your project team approach to problem, including the overall goals and your team expectations for final product/demo.
+[ ] Submit on BB a link to your project repository.
+[ ] At a minimum your project description should include the following 8 items:
+[ ] project background description
+[ ] project problem statement
+[ ] inadequacy of current solutions to problem
+[ ] background skills/interests applicable to problem
+[ ] your project team approach to problem, including the overall goals and your team expectations for final product/demo.
 
 
 
@@ -18,9 +12,9 @@ your project team approach to problem, including the overall goals and your team
 
 ## Team Members
 
-Kyle Arens  - arenskyle@gmail.com  
-Ryan Benner - bennerrj@outlook.com  
-Jon Deibel  - dibesjr@gmail.com  
+Kyle Arens  - arenskyle@gmail.com
+Ryan Benner - bennerrj@outlook.com
+Jon Deibel  - dibesjr@gmail.com
 
 # Faculty Advisor
 
