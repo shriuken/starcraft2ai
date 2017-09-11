@@ -18,13 +18,15 @@ Jon Deibel  - dibesjr@gmail.com
 In the process of setting up a meeting with Dr. Ali Minai.  
 http://www.ece.uc.edu/~aminai/
 
-## Abstract
+## Project Background Description
 
 There has been a lot of exciting publications and advances in the AI world in the past several years. With this project, we want to explore and use conventional and cutting edge ML techniques in order to create some sort of Starcraft II (SC2) agent that can play, and hopefully defeat a basic blizzard AI.
 
-## Scope
+## Problem Statement
 
-The scope of this project will ideally hit the bare minimum of being able to successfully play a full SC2 game, ideally beating the current SC2 AI.
+The problem we are attempting to address is that nobody has yet been able to create an AI for SC2 that operates on a human APM (Actions per Minute) level.
+
+The scope of this project will be that our AI is able to successfully play a full SC2 game, ideally beating the current SC2 very easy AI, while limited to a human-like APM.
 
 ## Details
 
