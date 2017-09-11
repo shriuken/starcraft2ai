@@ -27,6 +27,16 @@ your project team approach to problem, including the overall goals and your team
 
 # Starcraft II AI Project Description
 
+## Team Members
+
+Kyle Arens  - arenskyle@gmail.com
+Ryan Benner - bennerrj@outlook.com
+Jon Deibel  - dibesjr@gmail.com
+
+# Faculty Advisor
+
+In the process of setting up a meeting with Dr. Ali Minai.http://www.ece.uc.edu/~aminai/
+
 ## Abstract
 
 There has been a lot of exciting publications and advances in the AI world in the past several years. With this project, we want to explore and use conventional and cutting edge ML techniques in order to create some sort of Starcraft II (SC2) agent that can play, and hopefully defeat a basic blizzard AI.
