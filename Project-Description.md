@@ -1,10 +1,3 @@
-- [x] Submit on BB a link to your project repository.
-- [x] project background description
-- [x] project problem statement
-- [x] inadequacy of current solutions to problem
-- [x] background skills/interests applicable to problem
-- [x] your project team approach to problem, including the overall goals and your team expectations for final product/demo.
-
 # Starcraft II AI Project Description
 
 ## Team Members
