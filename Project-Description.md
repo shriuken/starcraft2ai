@@ -1,5 +1,5 @@
 - [ ] Submit on BB a link to your project repository.
-- [ ] At a minimum your project description should include the following 8 items:
+At a minimum your project description should include the following 8 items:
 - [ ] project background description
 - [ ] project problem statement
 - [ ] inadequacy of current solutions to problem
@@ -10,9 +10,9 @@
 
 ## Team Members
 
-Kyle Arens  - arenskyle@gmail.com
-Ryan Benner - bennerrj@outlook.com
-Jon Deibel  - dibesjr@gmail.com
+Kyle Arens  - arenskyle@gmail.com   
+Ryan Benner - bennerrj@outlook.com  
+Jon Deibel  - dibesjr@gmail.com  
 
 # Faculty Advisor
 
