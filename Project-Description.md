@@ -1,9 +1,9 @@
 - [x] Submit on BB a link to your project repository.
-- [ ] project background description
-- [ ] project problem statement
-- [ ] inadequacy of current solutions to problem
-- [ ] background skills/interests applicable to problem
-- [ ] your project team approach to problem, including the overall goals and your team expectations for final product/demo.
+- [x] project background description
+- [x] project problem statement
+- [x] inadequacy of current solutions to problem
+- [x] background skills/interests applicable to problem
+- [x] your project team approach to problem, including the overall goals and your team expectations for final product/demo.
 
 # Starcraft II AI Project Description
 
@@ -26,13 +26,17 @@ There has been a lot of exciting publications and advances in the AI world in th
 
 The problem we are attempting to address is that nobody has yet been able to create an AI for SC2 that operates on a human APM (Actions per Minute) level.
 
+Current SC/SC2 AI abuses the fact that it is able to take an inhuman number of actions very quickly, thereby making it a poor example of actual AI capabilities.
+
 The scope of this project will be that our AI is able to successfully play a full SC2 game, ideally beating the current SC2 very easy AI, while limited to a human-like APM.
 
-## Details
+## Background Skills/Interests
+
+Collectively, we have an interest in real-time strategy style games, AI, and learning systems.
+
+## Possible Approaches
 
 There are a lot of ways we could go about doing this project. Below we outlined a few and explained the challenges and benefits to each of them. These are just some that we have been thinking about recently, certainly not an exhaustive list.
-
-## Ideas
 
 ### Model to learn Actions -> Game outcome
 
