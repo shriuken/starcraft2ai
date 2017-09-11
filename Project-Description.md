@@ -13,7 +13,7 @@ Kyle Arens  - arenskyle@gmail.com
 Ryan Benner - bennerrj@outlook.com  
 Jon Deibel  - dibesjr@gmail.com  
 
-# Faculty Advisor
+## Faculty Advisor
 
 In the process of setting up a meeting with Dr. Ali Minai.  
 http://www.ece.uc.edu/~aminai/
