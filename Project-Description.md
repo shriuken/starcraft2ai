@@ -1,4 +1,4 @@
-- [ ] Submit on BB a link to your project repository.
+- [x] Submit on BB a link to your project repository.
 - [ ] project background description
 - [ ] project problem statement
 - [ ] inadequacy of current solutions to problem
