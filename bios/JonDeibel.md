@@ -2,7 +2,6 @@
 
 ## Contact Information
 * deibeljc@mail.uc.edu
-* 614-949-3183
 
 ## About me
 While I enjoy building applications on any platform, my latest passion has revolved around Machine Learning. Specifically creating intelligent systems that can do complicated tasks. The two big areas that I think are really fascinating are self driving cars and game AI (like alpha-go).
