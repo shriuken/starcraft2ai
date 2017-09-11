@@ -2,15 +2,15 @@
 
 ## Abstract
 
-There has been a lot of exciting publications and advances in the AI world in the past several years. With this project, I want to explore and use conventional and cutting edge ML techniques in order to create some sort of Starcraft II (SC2) agent that can play, and hopefully defeat a basic blizzard AI.
+There has been a lot of exciting publications and advances in the AI world in the past several years. With this project, we want to explore and use conventional and cutting edge ML techniques in order to create some sort of Starcraft II (SC2) agent that can play, and hopefully defeat a basic blizzard AI.
 
 ## Scope
 
-The scope of this project will ideally hit the bare minimum of being able to successfully play a full SC2 game given a deck and an opponent.
+The scope of this project will ideally hit the bare minimum of being able to successfully play a full SC2 game, ideally beating the current SC2 AI.
 
 ## Details
 
-There are a lot of ways we could go about doing this project. Below I outlined a few and explained the challenges and benefits to each of them. These are just some that I have been thinking about recently, certainly not an exhaustive list.
+There are a lot of ways we could go about doing this project. Below we outlined a few and explained the challenges and benefits to each of them. These are just some that we have been thinking about recently, certainly not an exhaustive list.
 
 ## Ideas
 
