@@ -43,7 +43,7 @@ This method would require a pretty large set of SC2 replay data. Thankfully deep
 
 **Benefits**
 
-1. The major benefit of this model is that if properly trained, building an AI would be a simple deep search on possible X moves followed by a certain depth of moves after that and computing the overall confidence of winning at each given board state. Boom, an AI. (or something)
+The major benefit of this model is that if properly trained, building an AI would be a simple deep search on possible X moves followed by a certain depth of moves after that and computing the overall confidence of winning at each given board state. Boom, an AI. (or something)
 
 ---
 
