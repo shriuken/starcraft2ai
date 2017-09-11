@@ -1,18 +1,6 @@
-
-
-Create your Project Repository and add your Bios from Assignment #1.
-
-Create and add a project description file called  Project-Description.md. 
-
 Submit on BB a link to your project repository.
 
 At a minimum your project description should include the following 8 items:
-
-title of project
-
-all team members with email addresses
-
-faculty advisor with email address
 
 project background description
 
