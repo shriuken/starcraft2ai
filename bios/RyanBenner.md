@@ -1,7 +1,6 @@
 # Professional Biography for Ryan Benner
 
 ## Contact Information
-* (330) 277 1237
 * rjbenner@hotmail.com
 * www.linkedin.com/in/rjbenner
 
