@@ -75,4 +75,4 @@ There are a lot of benefits here. The first and foremost is that this has proved
 
 ## Conclusion
 
-Regardless of which method sounds promising, the first step would be to investigate other methods. Since these ideas are just off the top of my head, there are undoubtedly many ways to solve this problem. It would probably be good to explore more of them.
+Regardless of which method sounds promising, the first step would be to investigate other methods. Since these ideas are just off the top of my head, there are undoubtedly many ways to solve this problem. It would probably be good to explore more of them. The final demo would be to show the AI playing against either itself or a Blizzard AI opponent.
