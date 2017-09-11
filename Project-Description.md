@@ -21,6 +21,8 @@ The problem we are attempting to address is that nobody has yet been able to cre
 
 Current SC/SC2 AI abuses the fact that it is able to take an inhuman number of actions very quickly, thereby making it a poor example of actual AI capabilities.
 
+## Finals goal of project
+
 The scope of this project will be that our AI is able to successfully play a full SC2 game, ideally beating the current SC2 very easy AI, while limited to a human-like APM.
 
 ## Background Skills/Interests
@@ -65,7 +67,7 @@ We go the route of DeepMind’s AlphaGo (NOTE:  https://deepmind.com/research/al
 
 **Challenges**
 
-This has quite a few challenges attached to it. The first one is to learn how in the world to build a reinforcement learning system. Then we have to hook that up to a simulated heartSC2tone environment. (NOTE:  https://github.com/HeartSC2im/SabberStone) Once those are done, then we need the compute power to actually have the damn thing to learn and get better.
+This has quite a few challenges attached to it. The first one is to learn how in the world to build a reinforcement learning system. Then we have to hook that up to the simulated SC2 environment. Once those are done, then we need the compute power to actually have the damn thing to learn and get better.
 
 **Benefits**
 
