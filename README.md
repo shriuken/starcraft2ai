@@ -1,28 +1,60 @@
-# Starcraft 2 AI
-Keep it one line.
+# Starcraft II AI Project Description
 
+## Abstract
 
-Create your Project Repository and add your Bios from Assignment #1.
+There has been a lot of exciting publications and advances in the AI world in the past several years. With this project, I want to explore and use conventional and cutting edge ML techniques in order to create some sort of Starcraft II (SC2) agent that can play, and hopefully defeat a basic blizzard AI.
 
-Create and add a project description file called  Project-Description.md. 
+## Scope
 
-Submit on BB a link to your project repository.
+The scope of this project will ideally hit the bare minimum of being able to successfully play a full SC2 game given a deck and an opponent.
 
-At a minimum your project description should include the following 8 items:
+## Details
 
-title of project
+There are a lot of ways we could go about doing this project. Below I outlined a few and explained the challenges and benefits to each of them. These are just some that I have been thinking about recently, certainly not an exhaustive list.
 
-all team members with email addresses
+## Ideas
 
-faculty advisor with email address
+### Model to learn Actions -> Game outcome
 
-project background description
+Given a set of SC2 replay data, we can build a model that given a game state outputs the likelihood of winning. You could do this by mapping a game state to the game outcome and learn from that set of data.
 
-project problem statement
+**Challenges**
 
-inadequacy of current solutions to problem
+This method would require a pretty large set of SC2 replay data. Thankfully deepmind and blizzard have provided about 13 gigs (with more coming) of anonymized replay data for us to use.
 
-background skills/interests applicable to problem
+**Benefits**
 
-your project team approach to problem, including the overall goals and your team expectations for final product/demo.
+1. The major benefit of this model is that if properly trained, building an AI would be a simple deep search on possible X moves followed by a certain depth of moves after that and computing the overall confidence of winning at each given board state. Boom, an AI. (or something)
+
+---
+
+### Algorithm to determine Actions -> Game outcome
+
+A similar approach to #1 but instead of applying a learning model to slap a value to any given game state, we come up with our own algorithm.
+
+**Challenges**
+
+It requires a ton of domain knowledge to figure out a proper algorithm to figure out who is in the lead given a game state. This could lead to some lackluster results, and it wouldn’t really "learn" or get better on its own.
+
+**Benefits**
+
+The benefit here is simple: we don’t need a massive set of data.
+
+---
+
+### Build a Reinforcement Learning system
+
+We go the route of DeepMind’s AlphaGo (NOTE:  https://deepmind.com/research/alphago/) and use Reinforcement Learning to have the AI learn to be better on its own. The way this would work is to have the same AI play against each other in a simulated environment, also known as Adversarial Learning (it's the new hotness).
+
+**Challenges**
+
+This has quite a few challenges attached to it. The first one is to learn how in the world to build a reinforcement learning system. Then we have to hook that up to a simulated heartSC2tone environment. (NOTE:  https://github.com/HeartSC2im/SabberStone) Once those are done, then we need the compute power to actually have the damn thing to learn and get better.
+
+**Benefits**
+
+There are a lot of benefits here. The first and foremost is that this has proved to be the most effective way to build an AI agent yet (see AlphaGo). The next is that we don’t need a massive amount of pre-labeled and crafted data. The last benefit is that we would learn some really dope ass cutting edge stuff.
+
+## Conclusion
+
+Regardless of which method sounds promising, the first step would be to investigate other methods. Since these ideas are just off the top of my head, there are undoubtedly many ways to solve this problem. It would probably be good to explore more of them.
 
