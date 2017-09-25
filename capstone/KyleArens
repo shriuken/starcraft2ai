@@ -1,15 +1,48 @@
-For this assignment you will write a 5-paragraph Individual Capstone Assessment.
-
-• One paragraph introduction about what your project is all about from your academic perspective.
-
-• Two paragraphs on how your collective college experiences will guide developing this project.
-
-One paragraph should focus on how the college curriculum and the second paragraph on your co-op experiences. Discuss the role of specific CS courses (include course numbers and titles), and your specific co-op employers (include company names and job titles). In these paragraphs you should discuss technical and non-technical skills, how you acquired them, and how you expect to apply them.
-• Final two paragraphs on your motivation and preliminary project approach –Discuss why you are motivated/excited to participate in the project –Discuss your preliminary approach to designing a solution –Discuss what your expected results and accomplishments will be –Discuss how you will evaluate your contributions: how will you know when you are done and whether or not you have done a good job?
+Final two paragraphs on your motivation and preliminary project approach –Discuss why you are motivated/excited to participate in the project –Discuss your preliminary approach to designing a solution –Discuss what your expected results and accomplishments will be –Discuss how you will evaluate your contributions: how will you know when you are done and whether or not you have done a good job?
 
 • Requirement: Minimum 6 sentences per paragraph
 Submission should be as an included file in your team project repository. It is recommended that you create a Capstone subdirectory in your repo to hold all essays.
 
 ______________________________________________________________________________________________________________________
 
-The goal of this project is to create an AI to learn and play the game Starcraft 2. 
+The goal of this project is to create an AI to learn and play the game Starcraft 2. Although AIs have been created
+previously, there have been consistent flaws in them that prevent them from being considered truly successful.
+It has been well established that machines are more successful at games in which the markovian property is prevalent.
+They do not display the same success when the outcome of a game is more dependent on long term strategy, and the
+markovian property becomes less influential. This presents the biggest challenge of our project, creating an AI 
+that can utilize long term memory to make meaningful decisions. Rather than simply abusing its ability to make an 
+inhuman number of actions, we want the AI we create to have a broader view of the gameplay than the immediate.
+
+A few courses stand out from the rest in my curriculum here at UC as good preparation for this project. The courses
+that stand out as most important to me are CS 4071 (Design and Analysis of Algorithms), CS 6037 (Machine Learning),
+STAT 2037 (Probability and Statistics 1), and MATH 2076 (Linear Algebra). Between them, these classes have given me
+a solid basis in understanding the math behind machine learning, which is arguably one of the most important things
+for succeeding with the creation of an AI. To complement this, CS6037, along with some supplement from other courses
+I'm taking this semester, has given me a solid understanding in the theoretical fundamentals of machine learning.
+Although UC's undergraduate curriculum does not offer many opportunities to venture into deep learning, it does offer
+many opportunities to build a basis of knowledge from which to launch into deep learning from. It is my goal to use
+this knowledge base to help me succeed in my use of and research into deep learning in this project.
+
+The contributions of my co-op experience to this project differ starkly from the contributions that my courses will
+provide. While my courses provided me with 'hard' technical skills that are relevant to this project, most of the
+technical skills I learned on co-op aren't in the least bit applicable to this project. The most applicable would be
+the general programming knowledge that I acquired in C++, Java, and Python. That being said, my co-op experiences have
+provided me with many soft skills that I hope to use to help contribute to this project. My most recent co-op, working 
+as a DEXcenter developer (Java and Python) at ITI, saw me saddled with a surprising amount of responsibility and freedom
+around the problems that I was tasked with. This helped me grow my ability to independently analyze and design solutions
+to complex problems. One example would be a bug in our pseudo-random number generation where it wasn't returning unique 
+values in a specific use case. Rather than redesign the number generation, potentially creating problems in other areas
+of the code, I came up with a way to reformat how our data was being stored that would guarantee unique records. 
+
+My primary motivation behind, and interest in, this project is one of personal learning. Going into industry, knowledge
+of deep learning isn't likely to have an enormous impact on my work. However, I would like to explore it out of personal
+interest, and as a potential topic for masters work in the future. In addition to this, I've always enjoyed video games,
+specifically strategy games. Having played them myself, the ability to teach an AI to understand long term and complex
+causality is fascinating to me. Lastly, I'm excited about this project because it poses complex and difficult problems.
+I enjoy solving problems, and hopefully doing our best to succeed with this AI will pose many interesting problems.
+
+Our expected result is to create an AI that can, on some functional level, play Starcraft 2. This gives us a very
+tangible and measurable output: is our AI winning its games? In addition to that, how soundly is it winning or losing?
+Is it putting up a decent contest? To begin approaching this, the simplest way to begin is likely a simple logistic
+regression across a set of gameplay data. From there, that model can be refined by moving into a reinforcement based system
+with supervision. Ideally, the AI will be able to play a game by itself at the end of this project.
