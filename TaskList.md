@@ -1,1 +1,28 @@
 **Tasks**
+ - [ ] [SPIKE] Understand reinforcement learning
+    - Ryan, Kyle, Jon
+ - [ ] [SPIKE] Research deep reinforcement learning
+    - Jon
+ - [ ] [SPIKE] Research long term planning in ML
+    - Jon
+ - [ ] [SPIKE] Research what ML library is best to use
+    - Kyle
+ - [ ] [SPIKE] Understand AlphaGO implementation and methodology
+    - Kyle
+ - [ ] [SPIKE] Research current SC(2) ML AI
+    - Ryan 
+ - [ ] [SPIKE] Decide if C++ API or python API is better suited
+    - Jon
+ - [ ] [SPIKE] Research best race to use
+    - Ryan
+ - [ ] Develop testbed AI to document API usage in the "real world"
+    - Ryan
+ - [ ] Understand Replay Data format/usage
+    - Jon
+ - [ ] Build first naive attempt at a learning model to play the game
+    - Kyle
+ - [ ] Build game state parser
+    - Jon
+ - [ ] Architect ML for short term planning
+    - Kyle
+ 
