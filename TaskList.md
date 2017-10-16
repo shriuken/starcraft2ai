@@ -27,4 +27,5 @@
     - Kyle
  - [ ] Architect ML for long term planning
     - Ryan
- 
+ - [ ] Build Replay Data parser
+    - Jon
