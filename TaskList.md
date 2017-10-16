@@ -25,4 +25,6 @@
     - Jon
  - [ ] Architect ML for short term planning
     - Kyle
+ - [ ] Architect ML for long term planning
+    - Ryan
  
