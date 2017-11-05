@@ -13,7 +13,7 @@
  | No | DEVELOP | Write testbed AI to document API usage in the "real world" | Jon | Nov 31, 2017 | Dec 31, 2017 | 10% | 10% | 80% |
  | No | SPIKE | Understand Replay Data format/usage | Jon | Oct 31, 2017 | Nov 31, 2017 | 10% | 10% | 80% |
  | No | DEVELOP | Build game state parser | Jon | Oct 31, 2017 | Nov 31, 2017 | 5% | 5% | 90% |
- | No | DEVELOP | Build replay data parser | Jon | Oct 31, 2017 | Nov 31, 2017 | 5% | 5% | 90% |
+ | No | DEVELOP | Build replay data parser | Kyle | Oct 31, 2017 | Nov 31, 2017 | 5% | 5% | 90% |
  | No | DEVELOP | Build first naive attempt at a learning model to play the game | Kyle | Oct 31, 2017 | Nov 31, 2017 | 15% | 70% | 15% |
  | No | DESIGN | Architect ML for short term planning | Kyle | Nov 31, 2017 | Dec 31, 2017 | 15% | 70% | 15% |
  | No | DESIGN | Architect ML for long term planning | Ryan | Nov 31, 2017 | Dec 31, 2017 | 70% | 15% | 15% |
