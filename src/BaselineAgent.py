@@ -22,6 +22,10 @@ _TERRAN_COMMANDCENTER = 18
 _TERRAN_SUPPLYDEPOT = 19
 _TERRAN_SCV = 45
 
+# Number of stuff to build
+_BARRACKS_TO_BUILD = 3
+_SUPPLY_TO_BUILD = 3
+
 # Parameters
 _PLAYER_SELF = 1
 _SUPPLY_USED = 3
@@ -34,9 +38,9 @@ _NOADD = [0]
 
 class BaselineAgent(base_agent.BaseAgent):
     base_top_left = None
-    supply_depot_built = False
+    supply_depot_built = 0
     scv_selected = False
-    barracks_built = False
+    barracks_built = 0
     barracks_selected = False
     barracks_rallied = False
     army_selected = False
@@ -55,7 +59,7 @@ class BaselineAgent(base_agent.BaseAgent):
             player_y, player_x = (obs.observation["minimap"][_PLAYER_RELATIVE] == _PLAYER_SELF).nonzero()
             self.base_top_left = player_y.mean() <= 31
 
-        if not self.supply_depot_built:
+        if not self.supply_depot_built < _SUPPLY_TO_BUILD:
             if not self.scv_selected:
                 unit_type = obs.observation["screen"][_UNIT_TYPE]
                 unit_y, unit_x = (unit_type == _TERRAN_SCV).nonzero()
@@ -71,18 +75,18 @@ class BaselineAgent(base_agent.BaseAgent):
 
                 target = self.transform_location(int(unit_x.mean()), 0, int(unit_y.mean()), 20)
 
-                self.supply_depot_built = True
+                self.supply_depot_built += 1
 
                 return actions.FunctionCall(_BUILD_SUPPLYDEPOT, [_SCREEN, target])
 
-        elif not self.barracks_built:
+        elif not self.barracks_built < _BARRACKS_TO_BUILD:
             if _BUILD_BARRACKS in obs.observation["available_actions"]:
                 unit_type = obs.observation["screen"][_UNIT_TYPE]
                 unit_y, unit_x = (unit_type == _TERRAN_COMMANDCENTER).nonzero()
 
                 target = self.transform_location(int(unit_x.mean()), 20, int(unit_y.mean()), 0)
 
-                self.barracks_built = True
+                self.barracks_built += 1
 
                 return actions.FunctionCall(_BUILD_BARRACKS, [_SCREEN, target])
 
