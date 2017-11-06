@@ -89,12 +89,10 @@ class DQN:
     def create_model(self):
         model = Sequential()
         state_shape = self.states.shape
-        model.add(Dense(24, input_dim=1, activation="relu"))
-        model.add(Dense(48, activation="relu"))
-        model.add(Dense(24, activation="relu"))
+        model.add(Dense(7, input_dim=1, activation="relu"))
         model.add(Dense(self.actions.shape[0]))
         model.compile(loss="mean_squared_error",
-                      optimizer=Adam(lr=self.learning_rate))
+                      optimizer=Adam(lr=self.learning_rate), metrics=['accuracy', 'mae'])
         return model
 
     def act(self, state):
@@ -129,7 +127,7 @@ class DQN:
             else:
                 Q_future = max(self.target_model.predict(new_state)[0])
                 target[0][action] = reward + Q_future * self.gamma
-            self.model.fit(state, target, epochs=3, verbose=1, metrics=['mae'])
+            self.model.fit(state, target, epochs=3, verbose=1)
 
     def target_train(self):
         weights = self.model.get_weights()
