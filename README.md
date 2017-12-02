@@ -2,31 +2,25 @@
 This document is adapted, in part, from the original [project description](https://github.com/shriuken/starcraft2ai/edit/master/ProjectDescription.md) document.
 
 ## Table of Contents
-1. Project Abstract
-    1. [Team Members](https://github.com/shriuken/starcraft2ai/blob/master/ProjectDescription.md#team-members)
-    1. [Advisor](https://github.com/shriuken/starcraft2ai/blob/master/ProjectDescription.md#faculty-advisor)
-1. Project Description
-1. User Stories and Design Diagrams
-    1. User Stories
-    1. Design Diagrams
+1. [Project Abstract](https://github.com/shriuken/starcraft2ai/blob/master/README.md#abstract)
+    1. [Team Members](https://github.com/shriuken/starcraft2ai/blob/master/README.md#team-members)
+    1. [Advisor](https://github.com/shriuken/starcraft2ai/blob/master/README.md#faculty-advisor)
+1. [Project Description](https://github.com/shriuken/starcraft2ai/blob/master/README.md#project-description)
+1. [User Stories and Design Diagrams](https://github.com/shriuken/starcraft2ai/blob/master/README.md#user-stories--design-diagrams)
+    1. [User Stories](https://github.com/shriuken/starcraft2ai/blob/master/README.md#user-stories)
+    1. [Design Diagrams](https://github.com/shriuken/starcraft2ai/blob/master/README.md#design-diagrams)
         1. Level 0 (TODO: Include descriptions)
         1. Level 1 (TODO: Include descriptions)
         1. Level 3 (TODO: Include descriptions)
-1. Project Tasks and Timeline
-    1. Task List
-    1. Timeline
-    1. Effort Matrix
-1. ABET Concerns Essay
-1. Slideshow
-    1. Slides
-    1. Recorded Presentation
-1. Self-Assessment Essays
-1. Professional Biographies
-    1. Arens, Kyle
-    1. Benner, Ryan
-    1. Deibel, Jon
-1. Budget
-1. Appendix
+1. [Project Tasks and Timeline](https://github.com/shriuken/starcraft2ai/blob/master/README.md#project-tasks-and-timelines)
+1. [ABET Concerns Essay](https://github.com/shriuken/starcraft2ai/blob/master/README.md#abet-concerns-essays)
+1. [Slideshow](https://github.com/shriuken/starcraft2ai/blob/master/README.md#slideshow)
+    1. [Slides](https://github.com/shriuken/starcraft2ai/blob/master/README.md#slides)
+    1. [Recorded Presentation](https://github.com/shriuken/starcraft2ai/blob/master/README.md#recorded-presentation)
+1. [Self-Assessment Essays](https://github.com/shriuken/starcraft2ai/blob/master/README.md#self-assessment-essays)
+1. [Professional Biographies](https://github.com/shriuken/starcraft2ai/blob/master/README.md#professional-biographries)
+1. [Budget](https://github.com/shriuken/starcraft2ai/blob/master/README.md#budget)
+1. [Appendix](https://github.com/shriuken/starcraft2ai/blob/master/README.md#appendix)
 
 ## Abstract
 
@@ -55,15 +49,22 @@ We are scoping our project in the following manner:
 
 ### User Stories
 
-Our user stories are available [here](https://github.com/shriuken/starcraft2ai/blob/master/UserStories.md)
+[User Stories](https://github.com/shriuken/starcraft2ai/blob/master/UserStories.md)
 
 ### Design Diagrams
 
-TODO: Do this.
+#### Level 0
+TODO: Write description, include diagram.
+
+#### Level 1
+TODO: Write description, include diagram.
+
+#### Level 2
+TODO: Write description, include diagram
 
 ## Project Tasks and Timelines
 
-We have combined our Task List, Timeline, and Effort Matrix into one table, viewable [here](https://github.com/shriuken/starcraft2ai/blob/master/TaskList.md).
+Combined [Task List, Timeline, and Effort Matrix](https://github.com/shriuken/starcraft2ai/blob/master/TaskList.md).
 
 ## ABET Concerns Essays
 
