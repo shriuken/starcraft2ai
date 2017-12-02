@@ -55,14 +55,17 @@ We are scoping our project in the following manner:
 
 #### Level 0
 ![D0 diagram](https://raw.githubusercontent.com/shriuken/starcraft2ai/master/design_diagrams/d0-diagram.png)
+
 TODO: Write description.
 
 #### Level 1
 ![D1 diagram](https://raw.githubusercontent.com/shriuken/starcraft2ai/master/design_diagrams/d1-diagram.png)
+
 TODO: Write description.
 
 #### Level 2
 ![D2 diagram](https://raw.githubusercontent.com/shriuken/starcraft2ai/master/design_diagrams/d2-diagram.png)
+
 TODO: Write description.
 
 ## Project Tasks and Timelines
