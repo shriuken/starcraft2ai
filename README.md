@@ -56,17 +56,17 @@ We are scoping our project in the following manner:
 #### Level 0
 ![D0 diagram](https://raw.githubusercontent.com/shriuken/starcraft2ai/master/design_diagrams/d0-diagram.png)
 
-TODO: Write description.
+This diagram represents the highest level view of our architecture. Starcraft 2 game replay data is taken in, and used to generate a model for autonomously playing the game.
 
 #### Level 1
 ![D1 diagram](https://raw.githubusercontent.com/shriuken/starcraft2ai/master/design_diagrams/d1-diagram.png)
 
-TODO: Write description.
+This diagram elaborates on our AI engine, and gives a high level view of what is being done at each stage. First the game state is parsed, then that parsed data is used to train the model, and turn the model decisions into in-game actions.
 
 #### Level 2
 ![D2 diagram](https://raw.githubusercontent.com/shriuken/starcraft2ai/master/design_diagrams/d2-diagram.png)
 
-TODO: Write description.
+This diagram gives a much more in depth breakdown of what each portion of our AI engine does. It elaborates greatly on how the data is parsed, and how it's used in long and short term planning by our model.
 
 ## Project Tasks and Timelines
 
