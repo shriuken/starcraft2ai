@@ -102,4 +102,18 @@ There have been no expenses to date.
 
 ## Appendix
 
-TODO
+### References
+Python abstraction: https://github.com/deepmind/pysc2  
+Raw C++ API for starcraft: https://github.com/Blizzard/s2client-proto  
+For deep model creation: https://github.com/tensorflow/tensorflow  
+Silver, David, et al. "Mastering the game of go without human knowledge." Nature 550.7676 (2017): 354-359.
+
+### Work breakdown
+
+| Work | Time | Team Members |
+| ---- | ---- | ------------ |
+| Learning the basics of Reinforcement Learning | 25 Hours | Kyle Arens, Jon Deibel, Ryan Benner |
+| Understanding C++/Python API | 10 Hours | Jon Deibel, Ryan Benner, Kyle Arens |
+| Creation of baseline AI/First RL based AI | 10 Hours | Jon Deibel, Ryan Benner |
+| Documentation | 5 Hours | Ryan Benner, Kyle Arens, Jon Deibel |
+| Reading + Understanding AlphaGo | 5 Hours | Ryan Benner, Kyle Arens, Jon Deibel |
