@@ -21,6 +21,7 @@ This document is adapted, in part, from the original [project description](https
 1. [Professional Biographies](https://github.com/shriuken/starcraft2ai/blob/master/README.md#professional-biographries)
 1. [Budget](https://github.com/shriuken/starcraft2ai/blob/master/README.md#budget)
 1. [Appendix](https://github.com/shriuken/starcraft2ai/blob/master/README.md#appendix)
+1. [TODO](https://github.com/shriuken/starcraft2ai/blob/master/README.md#todo)
 
 ## Abstract
 
@@ -117,3 +118,11 @@ Silver, David, et al. "Mastering the game of go without human knowledge." Nature
 | Creation of baseline AI/First RL based AI | 10 Hours | Jon Deibel, Ryan Benner |
 | Documentation | 5 Hours | Ryan Benner, Kyle Arens, Jon Deibel |
 | Reading + Understanding AlphaGo | 5 Hours | Ryan Benner, Kyle Arens, Jon Deibel |
+
+### TODO
+
+- [ ] Update design diagrams.
+- [ ] Update task list (further).
+- [ ] Research Actor-Critic Model.
+- [ ] Continue research on Q-tables and Q-functions.
+- [ ] Discussions on game state.
