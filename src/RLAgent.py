@@ -58,7 +58,7 @@ smart_actions = [
 KILL_UNIT_REWARD = 0.5
 KILL_BUILDING_REWARD = 0.7
 MORE_UNIT_REWARD = 0.5
-LOST_SCV_PENATLY = 1
+LOST_SCV_PENATLY = 3
 MINERAL_RATE_PENALTY = 0.1
 
 
@@ -133,7 +133,6 @@ class RLAgent(base_agent.BaseAgent):
         self.previous_action = None
         self.previous_state = None
 
-
     def transform_location(self, x, x_distance, y, y_distance):
         if not self.base_top_left:
             return [x - x_distance, y - y_distance]
@@ -142,7 +141,8 @@ class RLAgent(base_agent.BaseAgent):
 
     def reset(self):
         self.qlearn.save_q_table()
-        self.scores = []
+        self.episodes += 1
+        print("Running episode: ", self.episodes)
 
     def step(self, obs):
         super(RLAgent, self).step(obs)
@@ -171,7 +171,6 @@ class RLAgent(base_agent.BaseAgent):
         worker_count = obs.observation['player'][6]
         score = obs.observation['score_cumulative'][0]
         self.scores.append(score)
-        print('Score: [%d%%]\r' % score, end="")
         sys.stdout.flush()
         current_state = [
             supply_depot_count,
@@ -187,22 +186,22 @@ class RLAgent(base_agent.BaseAgent):
             if killed_unit_score > self.previous_killed_unit_score:
                 reward += KILL_UNIT_REWARD
 
-            if barracks_count > self.previous_barracks_count:
-                reward += 5
+            # if barracks_count > self.previous_barracks_count:
+            #     reward += 10
 
-            if army_supply > self.previous_army_count:
-                reward += 0.3
-
+            # if army_supply > self.previous_army_count:
+            #     reward += 0.3
+            #
             if killed_building_score > self.previous_killed_building_score:
                 reward += KILL_BUILDING_REWARD
-
-            if mineral_rate < self.previous_mineral_rate:
-                reward -= MINERAL_RATE_PENALTY
-
-            if worker_count < self.previous_worker_count:
-                reward -= LOST_SCV_PENATLY
-
-            reward += (score - self.previous_score) / 1000
+            #
+            # if mineral_rate < self.previous_mineral_rate:
+            #     reward -= MINERAL_RATE_PENALTY
+            #
+            # if worker_count < self.previous_worker_count:
+            #     reward -= LOST_SCV_PENATLY
+            #
+            # reward += (score - self.previous_score) / 1000
 
             self.qlearn.learn(str(self.previous_state), self.previous_action, reward, str(current_state))
 
@@ -211,11 +210,11 @@ class RLAgent(base_agent.BaseAgent):
 
         self.previous_killed_unit_score = killed_unit_score
         self.previous_killed_building_score = killed_building_score
-        self.previous_barracks_count = barracks_count
-        self.previous_mineral_rate = mineral_rate
-        self.previous_worker_count = worker_count
-        self.previous_army_count = army_supply
-        self.previous_score = score
+        # self.previous_barracks_count = barracks_count
+        # self.previous_mineral_rate = mineral_rate
+        # self.previous_worker_count = worker_count
+        # self.previous_army_count = army_supply
+        # self.previous_score = score
         self.previous_state = current_state
         self.previous_action = rl_action
 
