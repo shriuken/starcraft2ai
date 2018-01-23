@@ -5,6 +5,6 @@ We have two overall approaches to to testing our Starcraft 2 AI - code coverage 
 
 # Test Case Descriptions
 1. Learning Algorithm Unit Test
-  l. Assert that a learned variables changes between one step of the learning algorithm.
-  l. Assert that non-learned variables do not change between one step of the learning algorithm.
+  1. Assert that a learned variables changes between one step of the learning algorithm.
+  1. Assert that non-learned variables do not change between one step of the learning algorithm.
   
