@@ -27,3 +27,8 @@ smart_actions = [
     ACTION_SELECT_ARMY,
     ACTION_ATTACK,
 ]
+
+for mm_x in range(0, 64):
+    for mm_y in range(0, 64):
+        if (mm_x + 1) % 32 == 0 and (mm_y + 1) % 32 == 0:
+            smart_actions.append(ACTION_ATTACK + '_' + str(mm_x - 16) + '_' + str(mm_y - 16))
