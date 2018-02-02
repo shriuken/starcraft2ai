@@ -13,21 +13,28 @@ def in_range(target):
     return MISC.MAP_SIZE[0] > target[0] > 0 and MISC.MAP_SIZE[1] > target[1] > 0
 
 
-def transform_distance(self, x, x_distance, y, y_distance):
-    if not self.base_top_left:
-        return [x - x_distance, y - y_distance]
-
-    return [x + x_distance, y + y_distance]
-
-
-def transform_location(base_top_left, x, x_distance, y, y_distance):
+def transform_distance(x, x_distance, y, y_distance, base_top_left):
     if not base_top_left:
         return [x - x_distance, y - y_distance]
 
     return [x + x_distance, y + y_distance]
 
 
+def transform_location(base_top_left, x, y):
+    if x > MISC.MAP_SIZE[0]:
+        x = MISC.MAP_SIZE[0]
+    if y > MISC.MAP_SIZE[1]:
+        y = MISC.MAP_SIZE[1]
+
+    if not base_top_left:
+        return [MISC.MAP_SIZE[0] - abs(x), MISC.MAP_SIZE[1] - abs(y)]
+
+    return [abs(x), abs(y)]
+
+
 def split_action(action_id):
+    if action_id is None:
+        return ACTIONS.smart_actions[0], 0, 0
     smart_action = ACTIONS.smart_actions[action_id]
 
     x = 0
@@ -146,7 +153,7 @@ def get_action(obs, base_top_left, move_number, cc_count, supply_depot_count,
         smart_action, x, y = split_action(previous_action)
 
         if smart_action == ACTIONS.ACTION_BUILD_BARRACKS or smart_action == ACTIONS.ACTION_BUILD_SUPPLY_DEPOT:
-            if UNITS.HARVEST_GATHER in obs.observation['available_actions']:
+            if ACTIONS.HARVEST_GATHER in obs.observation['available_actions']:
                 unit_y, unit_x = (unit_type == UNITS.NEUTRAL_MINERAL_FIELD).nonzero()
 
                 if unit_y.any():
@@ -157,6 +164,6 @@ def get_action(obs, base_top_left, move_number, cc_count, supply_depot_count,
 
                     target = [int(m_x), int(m_y)]
 
-                    return actions.FunctionCall(UNITS.HARVEST_GATHER, [MISC.QUEUED, target])
+                    return actions.FunctionCall(ACTIONS.HARVEST_GATHER, [MISC.QUEUED, target])
 
     return actions.FunctionCall(ACTIONS.NO_OP, [])

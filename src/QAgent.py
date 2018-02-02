@@ -93,7 +93,7 @@ class RLAgent(base_agent.BaseAgent):
 
             self.move_number = 0
 
-            return actions.FunctionCall(MISC.NO_OP, [])
+            return actions.FunctionCall(ACTIONS.NO_OP, [])
 
         unit_type = obs.observation['screen'][MISC.UNIT_TYPE]
 
@@ -128,8 +128,8 @@ class RLAgent(base_agent.BaseAgent):
             hot_squares = np.zeros(4)
             enemy_y, enemy_x = (obs.observation['minimap'][MISC.PLAYER_RELATIVE] == MISC.PLAYER_HOSTILE).nonzero()
             for i in range(0, len(enemy_y)):
-                y = int(math.ceil((enemy_y[i] + 1) / 32))
-                x = int(math.ceil((enemy_x[i] + 1) / 32))
+                y = int(math.ceil((enemy_y[i] + 1) / 32)) - 1
+                x = int(math.ceil((enemy_x[i] + 1) / 32)) - 1
 
                 hot_squares[((y - 1) * 2) + (x - 1)] = 1
 
@@ -144,10 +144,10 @@ class RLAgent(base_agent.BaseAgent):
 
             rl_action = self.qlearn.choose_action(str(current_state))
 
-            previous_state = current_state
-            previous_action = rl_action
+            self.previous_state = current_state
+            self.previous_action = rl_action
 
-            smart_action, x, y = split_action(previous_action)
+            smart_action, x, y = split_action(self.previous_action)
 
             if smart_action == ACTIONS.ACTION_BUILD_BARRACKS or smart_action == ACTIONS.ACTION_BUILD_SUPPLY_DEPOT:
                 unit_y, unit_x = (unit_type == UNITS.TERRAN_SCV).nonzero()
@@ -163,7 +163,7 @@ class RLAgent(base_agent.BaseAgent):
                     i = random.randint(0, len(barracks_y) - 1)
                     target = [barracks_x[i], barracks_y[i]]
 
-                    return actions.FunctionCall(ACTIONS.SELECT_POINT, [ACTIONS.SELECT_ALL, target])
+                    return actions.FunctionCall(ACTIONS.SELECT_POINT, [MISC.SELECT_ALL, target])
 
             elif smart_action == ACTIONS.ACTION_ATTACK:
                 if ACTIONS.SELECT_ARMY in obs.observation['available_actions']:
@@ -178,9 +178,9 @@ class RLAgent(base_agent.BaseAgent):
                 if supply_depot_count < 2 and ACTIONS.BUILD_SUPPLY_DEPOT in obs.observation['available_actions']:
                     if cc_y.any():
                         if supply_depot_count == 0:
-                            target = transform_distance(round(cc_x.mean()), -35, round(cc_y.mean()), 0)
+                            target = transform_distance(round(cc_x.mean()), -35, round(cc_y.mean()), 0, self.base_top_left)
                         elif supply_depot_count == 1:
-                            target = transform_distance(round(cc_x.mean()), -25, round(cc_y.mean()), -25)
+                            target = transform_distance(round(cc_x.mean()), -25, round(cc_y.mean()), -25, self.base_top_left)
 
                         return actions.FunctionCall(ACTIONS.BUILD_SUPPLY_DEPOT, [MISC.NOT_QUEUED, target])
 
@@ -188,9 +188,9 @@ class RLAgent(base_agent.BaseAgent):
                 if barracks_count < 2 and ACTIONS.BUILD_BARRACKS in obs.observation['available_actions']:
                     if cc_y.any():
                         if barracks_count == 0:
-                            target = transform_distance(round(cc_x.mean()), 15, round(cc_y.mean()), -9)
+                            target = transform_distance(round(cc_x.mean()), 15, round(cc_y.mean()), -9, self.base_top_left)
                         elif barracks_count == 1:
-                            target = transform_distance(round(cc_x.mean()), 15, round(cc_y.mean()), 12)
+                            target = transform_distance(round(cc_x.mean()), 15, round(cc_y.mean()), 12, self.base_top_left)
 
                         return actions.FunctionCall(ACTIONS.BUILD_BARRACKS, [MISC.NOT_QUEUED, target])
 
@@ -214,16 +214,18 @@ class RLAgent(base_agent.BaseAgent):
                     y_offset = random.randint(-1, 1)
 
                     return actions.FunctionCall(ACTIONS.ATTACK_MINIMAP, [MISC.NOT_QUEUED,
-                                                                         transform_location(int(x) + (x_offset * 8),
-                                                                                            int(y) + (y_offset * 8))])
+                                                                         transform_location(self.base_top_left,
+                                                                                            int(x) + (x_offset * 8),
+                                                                                            int(y) + (y_offset * 8))
+                                                                         ])
 
         elif self.move_number == 2:
-            move_number = 0
+            self.move_number = 0
 
             smart_action, x, y = split_action(self.previous_action)
 
             if smart_action == ACTIONS.ACTION_BUILD_BARRACKS or smart_action == ACTIONS.ACTION_BUILD_SUPPLY_DEPOT:
-                if UNITS.HARVEST_GATHER in obs.observation['available_actions']:
+                if ACTIONS.HARVEST_GATHER in obs.observation['available_actions']:
                     unit_y, unit_x = (unit_type == UNITS.NEUTRAL_MINERAL_FIELD).nonzero()
 
                     if unit_y.any():
@@ -234,6 +236,6 @@ class RLAgent(base_agent.BaseAgent):
 
                         target = [int(m_x), int(m_y)]
 
-                        return actions.FunctionCall(UNITS.HARVEST_GATHER, [MISC.QUEUED, target])
+                        return actions.FunctionCall(ACTIONS.HARVEST_GATHER, [MISC.QUEUED, target])
 
         return actions.FunctionCall(ACTIONS.NO_OP, [])

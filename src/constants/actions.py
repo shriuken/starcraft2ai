@@ -6,6 +6,7 @@ BUILD_SUPPLY_DEPOT = actions.FUNCTIONS.Build_SupplyDepot_screen.id
 BUILD_BARRACKS = actions.FUNCTIONS.Build_Barracks_screen.id
 TRAIN_MARINE = actions.FUNCTIONS.Train_Marine_quick.id
 SELECT_ARMY = actions.FUNCTIONS.select_army.id
+HARVEST_GATHER = actions.FUNCTIONS.Harvest_Gather_screen.id
 ATTACK_MINIMAP = actions.FUNCTIONS.Attack_minimap.id
 
 ACTION_DO_NOTHING = 'donothing'
