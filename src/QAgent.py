@@ -1,72 +1,88 @@
-import random
-import math
-import sys
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+import torch.optim as optim
 
-import numpy as np
-import pandas as pd
-import pickle as pkl
+from torch.autograd import Variable
+from torch.distributions import Categorical
 
 from pysc2.agents import base_agent
 from actions.actions import *
 from pysc2.lib import actions
 
-KILL_UNIT_REWARD = 1
 DATA_FILE = 'sparse_agent_data'
 
-# Stolen from https://github.com/MorvanZhou/Reinforcement-learning-with-tensorflow
-class QLearningTable:
-    def __init__(self, actions, learning_rate=0.01, reward_decay=0.9, e_greedy=0.9):
-        self.actions = actions  # a list
-        self.lr = learning_rate
-        self.gamma = reward_decay
-        self.epsilon = e_greedy
-        self.q_table = pd.DataFrame(columns=self.actions, dtype=np.float64)
 
-    def choose_action(self, observation):
-        self.check_state_exist(observation)
+class Policy(nn.Module):
+    def __init__(self):
+        super(Policy, self).__init__()
+        self.conv1 = nn.Conv2d(7, 64, kernel_size=5, stride=2)
+        self.bn1 = nn.BatchNorm2d(64)
+        self.conv2 = nn.Conv2d(64, 128, kernel_size=5, stride=2)
+        self.bn2 = nn.BatchNorm2d(128)
+        self.conv3 = nn.Conv2d(128, 128, kernel_size=5, stride=2)
+        self.bn3 = nn.BatchNorm2d(128)
 
-        if np.random.uniform() < self.epsilon:
-            # choose best action
-            state_action = self.q_table.ix[observation, :]
+        self.affine1 = nn.Linear(3200, 128)
+        self.affine2 = nn.Linear(128, len(ACTIONS.smart_actions))
 
-            # some actions have the same value
-            state_action = state_action.reindex(np.random.permutation(state_action.index))
+        self.lin1 = nn.Linear(8, 128)
 
-            action = state_action.idxmax()
-        else:
-            # choose random action
-            action = np.random.choice(self.actions)
+        self.saved_log_probs = []
+        self.rewards = []
 
-        return action
+    def forward(self, x, y):
+        x = F.relu(self.bn1(self.conv1(x)))
+        x = F.relu(self.bn2(self.conv2(x)))
+        x = F.relu(self.bn3(self.conv3(x)))
+        x = F.relu(self.affine1(x.view(x.size(0), -1)))
+        x = torch.cat((F.relu(self.lin1(y)), x))
+        action_scores = self.affine2(x)
+        return F.softmax(action_scores, dim=1)
 
-    def learn(self, s, a, r, s_):
-        self.check_state_exist(s_)
-        self.check_state_exist(s)
 
-        q_predict = self.q_table.ix[s, a]
+def select_action(policy, state, state2):
+    state = torch.from_numpy(state).float().unsqueeze(0)
+    state2 = torch.from_numpy(state2).float().unsqueeze(0)
+    probs = policy(Variable(state), Variable(state2))
+    m = Categorical(probs)
+    action = m.sample()
+    policy.saved_log_probs.append(m.log_prob(action))
+    return action.data[0]
 
-        if s_ != 'terminal':
-            q_target = r + self.gamma * self.q_table.ix[s_, :].max()
-        else:
-            q_target = r  # next state is terminal
 
-        # update
-        self.q_table.ix[s, a] += self.lr * (q_target - q_predict)
-
-    def check_state_exist(self, state):
-        if state not in self.q_table.index:
-            # append new state to q table
-            self.q_table = self.q_table.append(pd.Series([0] * len(self.actions), index=self.q_table.columns, name=state))
+def finish_episode(policy, optimizer):
+    R = 0
+    policy_loss = []
+    rewards = []
+    for r in policy.rewards[::-1]:
+        R = r + 0.99 * R
+        rewards.insert(0, R)
+    rewards = torch.Tensor(rewards)
+    rewards = (rewards - rewards.mean()) / (rewards.std() + np.finfo(np.float32).eps)
+    for log_prob, reward in zip(policy.saved_log_probs, rewards):
+        policy_loss.append(-log_prob * reward)
+    optimizer.zero_grad()
+    policy_loss = torch.cat(policy_loss).sum()
+    policy_loss.backward()
+    optimizer.step()
+    del policy.rewards[:]
+    del policy.saved_log_probs[:]
+    torch.save(policy, 'policy.pt')
+    torch.save(optimizer, 'optimizer.pt')
 
 
 class RLAgent(base_agent.BaseAgent):
     def __init__(self):
         super(RLAgent, self).__init__()
 
-        self.qlearn = QLearningTable(actions=list(range(len(ACTIONS.smart_actions))))
+        self.policy = Policy()
+        self.optimizer = optim.Adam(self.policy.parameters(), lr=1e-2)
 
         self.previous_action = None
         self.previous_state = None
+        self.previous_killed_building_score = 0
+        self.previous_killed_units_score = 0
 
         self.cc_y = None
         self.cc_x = None
@@ -82,16 +98,16 @@ class RLAgent(base_agent.BaseAgent):
         super(RLAgent, self).step(obs)
 
         if obs.last():
-            reward = obs.reward
+            reward = obs.reward * 25 if obs.reward > 0 else obs.reward * 2
 
-            self.qlearn.learn(str(self.previous_state), self.previous_action, reward, 'terminal')
-
-            self.qlearn.q_table.to_pickle(DATA_FILE + '.gz', 'gzip')
+            self.policy.rewards.append(reward)
 
             self.previous_action = None
             self.previous_state = None
 
             self.move_number = 0
+            # Train our network.
+            finish_episode(self.policy, self.optimizer)
 
             return actions.FunctionCall(ACTIONS.NO_OP, [])
 
@@ -140,9 +156,20 @@ class RLAgent(base_agent.BaseAgent):
                 current_state[i + 4] = hot_squares[i]
 
             if self.previous_action is not None:
-                self.qlearn.learn(str(self.previous_state), self.previous_action, 0, str(current_state))
+                reward = 0
+                killed_unit_score = obs.observation['score_cumulative'][5]
+                killed_building_score = obs.observation['score_cumulative'][6]
+                if killed_building_score > self.previous_killed_building_score:
+                    reward += 1
+                if killed_unit_score > self.previous_killed_units_score:
+                    reward += 0.1
 
-            rl_action = self.qlearn.choose_action(str(current_state))
+                self.policy.rewards.append(reward)
+                # finish_episode(self.policy, self.optimizer)
+                self.previous_killed_building_score = killed_building_score
+                self.previous_killed_units_score = killed_unit_score
+
+            rl_action = select_action(self.policy, obs.observation['minimap'], current_state)
 
             self.previous_state = current_state
             self.previous_action = rl_action
@@ -175,22 +202,16 @@ class RLAgent(base_agent.BaseAgent):
             smart_action, x, y = split_action(self.previous_action)
 
             if smart_action == ACTIONS.ACTION_BUILD_SUPPLY_DEPOT:
-                if supply_depot_count < 2 and ACTIONS.BUILD_SUPPLY_DEPOT in obs.observation['available_actions']:
+                if supply_depot_count < 5 and ACTIONS.BUILD_SUPPLY_DEPOT in obs.observation['available_actions']:
                     if cc_y.any():
-                        if supply_depot_count == 0:
-                            target = transform_distance(round(cc_x.mean()), -35, round(cc_y.mean()), 0, self.base_top_left)
-                        elif supply_depot_count == 1:
-                            target = transform_distance(round(cc_x.mean()), -25, round(cc_y.mean()), -25, self.base_top_left)
+                        target = [int(x), int(y)]
 
                         return actions.FunctionCall(ACTIONS.BUILD_SUPPLY_DEPOT, [MISC.NOT_QUEUED, target])
 
             elif smart_action == ACTIONS.ACTION_BUILD_BARRACKS:
-                if barracks_count < 2 and ACTIONS.BUILD_BARRACKS in obs.observation['available_actions']:
+                if barracks_count < 5 and ACTIONS.BUILD_BARRACKS in obs.observation['available_actions']:
                     if cc_y.any():
-                        if barracks_count == 0:
-                            target = transform_distance(round(cc_x.mean()), 15, round(cc_y.mean()), -9, self.base_top_left)
-                        elif barracks_count == 1:
-                            target = transform_distance(round(cc_x.mean()), 15, round(cc_y.mean()), 12, self.base_top_left)
+                        target = [int(x), int(y)]
 
                         return actions.FunctionCall(ACTIONS.BUILD_BARRACKS, [MISC.NOT_QUEUED, target])
 

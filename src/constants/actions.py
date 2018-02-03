@@ -31,5 +31,10 @@ smart_actions = [
 
 for mm_x in range(0, 64):
     for mm_y in range(0, 64):
+        if mm_x % 3 == 0 and mm_y % 3 == 0:
+            smart_actions.append(ACTION_BUILD_MARINE)
+            smart_actions.append(ACTION_BUILD_BARRACKS + '_' + str(mm_x) + '_' + str(mm_y))
+            smart_actions.append(ACTION_BUILD_SUPPLY_DEPOT + '_' + str(mm_x) + '_' + str(mm_y))
         if (mm_x + 1) % 32 == 0 and (mm_y + 1) % 32 == 0:
-            smart_actions.append(ACTION_ATTACK + '_' + str(mm_x - 16) + '_' + str(mm_y - 16))
+            for _ in range(150):
+                smart_actions.append(ACTION_ATTACK + '_' + str(mm_x - 16) + '_' + str(mm_y - 16))
