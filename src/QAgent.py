@@ -3,6 +3,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 
+import matplotlib.pyplot as plt
+
 from torch.autograd import Variable
 from torch.distributions import Categorical
 
@@ -81,8 +83,10 @@ class RLAgent(base_agent.BaseAgent):
 
         self.previous_action = None
         self.previous_state = None
+        self.previous_cumulative_score_total = 0
         self.previous_killed_building_score = 0
         self.previous_killed_units_score = 0
+
 
         self.cc_y = None
         self.cc_x = None
@@ -101,7 +105,8 @@ class RLAgent(base_agent.BaseAgent):
             reward = (obs.reward * 25) - 1
 
             self.policy.rewards.append(reward)
-
+            plt.plot(self.policy.rewards)
+            plt.show()
             self.previous_action = None
             self.previous_state = None
 
@@ -114,6 +119,7 @@ class RLAgent(base_agent.BaseAgent):
         unit_type = obs.observation['screen'][MISC.UNIT_TYPE]
 
         if obs.first():
+            self.previous_cumulative_score_total = obs.observation['score_cumulative'][0]
             player_y, player_x = (obs.observation['minimap'][MISC.PLAYER_RELATIVE] == MISC.PLAYER_SELF).nonzero()
             self.base_top_left = 1 if player_y.any() and player_y.mean() <= 31 else 0
 
@@ -156,9 +162,10 @@ class RLAgent(base_agent.BaseAgent):
                 current_state[i + 4] = hot_squares[i]
 
             if self.previous_action is not None:
-                reward = -1
+                reward = obs.observation['score_cumulative'][0] - self.previous_cumulative_score_total
                 killed_unit_score = obs.observation['score_cumulative'][5]
                 killed_building_score = obs.observation['score_cumulative'][6]
+
                 # if killed_building_score > self.previous_killed_building_score:
                 #     reward += 1
                 # if killed_unit_score > self.previous_killed_units_score:
@@ -166,6 +173,7 @@ class RLAgent(base_agent.BaseAgent):
 
                 self.policy.rewards.append(reward)
                 # finish_episode(self.policy, self.optimizer)
+                self.previous_cumulative_score_total = obs.observation['score_cumulative'][0]
                 self.previous_killed_building_score = killed_building_score
                 self.previous_killed_units_score = killed_unit_score
 
