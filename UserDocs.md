@@ -25,3 +25,9 @@ pip3 install torchvision`
   * If you want to customize your installation, please visit [PyTorch](http://pytorch.org/).
   
 ## Running starcraft2ai
+
+# FAQ
+* Q: Do I need to buy SC2?
+* A: No! The starter edition can be downloaded and used for free.
+* Q: Can I play against the AI?
+* A: Not yet! Maybe one day. Maybe you are the AI.
