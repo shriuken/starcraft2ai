@@ -16,17 +16,17 @@ DATA_FILE = 'sparse_agent_data'
 class Policy(nn.Module):
     def __init__(self):
         super(Policy, self).__init__()
-        self.conv1 = nn.Conv2d(7, 64, kernel_size=5, stride=2)
+        self.conv1 = nn.Conv2d(7, 64, kernel_size=6, stride=2)
         self.bn1 = nn.BatchNorm2d(64)
         self.conv2 = nn.Conv2d(64, 128, kernel_size=5, stride=2)
         self.bn2 = nn.BatchNorm2d(128)
-        self.conv3 = nn.Conv2d(128, 128, kernel_size=5, stride=2)
+        self.conv3 = nn.Conv2d(128, 128, kernel_size=4, stride=2)
         self.bn3 = nn.BatchNorm2d(128)
+        # Merging in current state
+        self.lin1 = nn.Linear(8, 128)
 
         self.affine1 = nn.Linear(3200, 128)
         self.affine2 = nn.Linear(128, len(ACTIONS.smart_actions))
-
-        self.lin1 = nn.Linear(8, 128)
 
         self.saved_log_probs = []
         self.rewards = []
@@ -98,7 +98,7 @@ class RLAgent(base_agent.BaseAgent):
         super(RLAgent, self).step(obs)
 
         if obs.last():
-            reward = obs.reward * 25 if obs.reward > 0 else obs.reward * 2
+            reward = (obs.reward * 25) - 1
 
             self.policy.rewards.append(reward)
 
@@ -156,13 +156,13 @@ class RLAgent(base_agent.BaseAgent):
                 current_state[i + 4] = hot_squares[i]
 
             if self.previous_action is not None:
-                reward = 0
+                reward = -1
                 killed_unit_score = obs.observation['score_cumulative'][5]
                 killed_building_score = obs.observation['score_cumulative'][6]
-                if killed_building_score > self.previous_killed_building_score:
-                    reward += 1
-                if killed_unit_score > self.previous_killed_units_score:
-                    reward += 0.1
+                # if killed_building_score > self.previous_killed_building_score:
+                #     reward += 1
+                # if killed_unit_score > self.previous_killed_units_score:
+                #     reward += 0.1
 
                 self.policy.rewards.append(reward)
                 # finish_episode(self.policy, self.optimizer)
@@ -202,7 +202,7 @@ class RLAgent(base_agent.BaseAgent):
             smart_action, x, y = split_action(self.previous_action)
 
             if smart_action == ACTIONS.ACTION_BUILD_SUPPLY_DEPOT:
-                if supply_depot_count < 5 and ACTIONS.BUILD_SUPPLY_DEPOT in obs.observation['available_actions']:
+                if supply_depot_count < 8 and ACTIONS.BUILD_SUPPLY_DEPOT in obs.observation['available_actions']:
                     if cc_y.any():
                         target = [int(x), int(y)]
 
