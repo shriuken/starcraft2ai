@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 
 from torch.autograd import Variable
 from torch.distributions import Categorical
@@ -86,6 +86,8 @@ class RLAgent(base_agent.BaseAgent):
         self.previous_cumulative_score_total = 0
         self.previous_killed_building_score = 0
         self.previous_killed_units_score = 0
+        self.won = 0
+        self.lost = 0
 
 
         self.cc_y = None
@@ -97,22 +99,27 @@ class RLAgent(base_agent.BaseAgent):
         # self.qlearn.save_q_table()
         self.episodes += 1
         print("Running episode: ", self.episodes)
+        print("Won: ", self.won, " Lost: ", self.lost)
 
     def step(self, obs):
         super(RLAgent, self).step(obs)
 
         if obs.last():
-            reward = (obs.reward * 25) - 1
+            reward = (obs.reward * 25)
 
             self.policy.rewards.append(reward)
-            plt.plot(self.policy.rewards)
-            plt.show()
+            # plt.plot(self.policy.rewards)
+            # plt.show()
             self.previous_action = None
             self.previous_state = None
 
             self.move_number = 0
             # Train our network.
             finish_episode(self.policy, self.optimizer)
+            if obs.reward > 0:
+                self.won += 1
+            else:
+                self.lost += 1
 
             return actions.FunctionCall(ACTIONS.NO_OP, [])
 
