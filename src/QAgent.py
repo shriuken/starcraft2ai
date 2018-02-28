@@ -88,6 +88,7 @@ class RLAgent(base_agent.BaseAgent):
         self.previous_killed_units_score = 0
         self.won = 0
         self.lost = 0
+        self.step_num = 0
 
 
         self.cc_y = None
@@ -103,7 +104,7 @@ class RLAgent(base_agent.BaseAgent):
 
     def step(self, obs):
         super(RLAgent, self).step(obs)
-
+        self.step_num += 1
         if obs.last():
             reward = (obs.reward * 25)
 
@@ -115,6 +116,7 @@ class RLAgent(base_agent.BaseAgent):
 
             self.move_number = 0
             # Train our network.
+            print("Episode Reward: ", sum(self.policy.rewards))
             finish_episode(self.policy, self.optimizer)
             if obs.reward > 0:
                 self.won += 1
@@ -154,31 +156,20 @@ class RLAgent(base_agent.BaseAgent):
             current_state[2] = barracks_count
             current_state[3] = obs.observation['player'][MISC.ARMY_SUPPLY]
 
-            hot_squares = np.zeros(4)
-            enemy_y, enemy_x = (obs.observation['minimap'][MISC.PLAYER_RELATIVE] == MISC.PLAYER_HOSTILE).nonzero()
-            for i in range(0, len(enemy_y)):
-                y = int(math.ceil((enemy_y[i] + 1) / 32)) - 1
-                x = int(math.ceil((enemy_x[i] + 1) / 32)) - 1
-
-                hot_squares[((y - 1) * 2) + (x - 1)] = 1
-
-            if not self.base_top_left:
-                hot_squares = hot_squares[::-1]
-
-            for i in range(0, 4):
-                current_state[i + 4] = hot_squares[i]
+            # hot_squares = np.zeros(4)
+            # enemy_y, enemy_x = (obs.observation['minimap'][MISC.PLAYER_RELATIVE] == MISC.PLAYER_HOSTILE).nonzero()
 
             if self.previous_action is not None:
                 reward = obs.observation['score_cumulative'][0] - self.previous_cumulative_score_total
                 killed_unit_score = obs.observation['score_cumulative'][5]
                 killed_building_score = obs.observation['score_cumulative'][6]
 
-                # if killed_building_score > self.previous_killed_building_score:
-                #     reward += 1
+                if killed_building_score > self.previous_killed_building_score:
+                    reward += 1
                 # if killed_unit_score > self.previous_killed_units_score:
                 #     reward += 0.1
 
-                self.policy.rewards.append(reward)
+                self.policy.rewards.append(killed_building_score - (0.0001 * self.step_num))
                 # finish_episode(self.policy, self.optimizer)
                 self.previous_cumulative_score_total = obs.observation['score_cumulative'][0]
                 self.previous_killed_building_score = killed_building_score
