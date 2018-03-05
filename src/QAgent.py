@@ -2,8 +2,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+import os
 
-# import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 
 from torch.autograd import Variable
 from torch.distributions import Categorical
@@ -18,25 +19,28 @@ DATA_FILE = 'sparse_agent_data'
 class Policy(nn.Module):
     def __init__(self):
         super(Policy, self).__init__()
-        self.conv1 = nn.Conv2d(7, 64, kernel_size=6, stride=2)
-        self.bn1 = nn.BatchNorm2d(64)
-        self.conv2 = nn.Conv2d(64, 128, kernel_size=5, stride=2)
+        self.conv1 = nn.Conv2d(2, 84, kernel_size=3, stride=1)
+        self.bn1 = nn.BatchNorm2d(84)
+        self.mp1 = nn.MaxPool2d(2)
+        self.conv2 = nn.Conv2d(84, 128, kernel_size=3, stride=1)
         self.bn2 = nn.BatchNorm2d(128)
-        self.conv3 = nn.Conv2d(128, 128, kernel_size=4, stride=2)
+        self.mp2 = nn.MaxPool2d(2)
+        self.conv3 = nn.Conv2d(128, 128, kernel_size=3, stride=1)
         self.bn3 = nn.BatchNorm2d(128)
+        self.mp3 = nn.MaxPool2d(2)
         # Merging in current state
         self.lin1 = nn.Linear(8, 128)
 
-        self.affine1 = nn.Linear(3200, 128)
+        self.affine1 = nn.Linear(8192, 128)
         self.affine2 = nn.Linear(128, len(ACTIONS.smart_actions))
 
         self.saved_log_probs = []
         self.rewards = []
 
     def forward(self, x, y):
-        x = F.relu(self.bn1(self.conv1(x)))
-        x = F.relu(self.bn2(self.conv2(x)))
-        x = F.relu(self.bn3(self.conv3(x)))
+        x = F.relu(self.mp1(self.bn1(self.conv1(x))))
+        x = F.relu(self.mp2(self.bn2(self.conv2(x))))
+        x = F.relu(self.mp3(self.bn3(self.conv3(x))))
         x = F.relu(self.affine1(x.view(x.size(0), -1)))
         x = torch.cat((F.relu(self.lin1(y)), x))
         action_scores = self.affine2(x)
@@ -94,6 +98,7 @@ class RLAgent(base_agent.BaseAgent):
         self.won = 0
         self.lost = 0
         self.step_num = 0
+        self.actions = []
 
 
         self.cc_y = None
@@ -122,6 +127,15 @@ class RLAgent(base_agent.BaseAgent):
             self.move_number = 0
             # Train our network.
             print("Episode Reward: ", sum(self.policy.rewards))
+            plt.plot(self.actions, '.')
+            script_dir = os.path.dirname(__file__)
+            results_dir = os.path.join(script_dir, 'Results1/')
+            sample_file_name = self.episodes
+
+            if not os.path.isdir(results_dir):
+                os.makedirs(results_dir)
+
+            plt.savefig(results_dir + sample_file_name)
             finish_episode(self.policy, self.optimizer)
             if obs.reward > 0:
                 self.won += 1
@@ -172,8 +186,8 @@ class RLAgent(base_agent.BaseAgent):
 
                 if killed_building_score > self.previous_killed_building_score:
                     reward += 1
-                # if killed_unit_score > self.previous_killed_units_score:
-                #     reward += 0.1
+                if killed_unit_score > self.previous_killed_units_score:
+                    reward += 0.1
 
                 self.policy.rewards.append(reward - (0.0001 * self.step_num))
                 # finish_episode(self.policy, self.optimizer)
@@ -181,12 +195,14 @@ class RLAgent(base_agent.BaseAgent):
                 self.previous_killed_building_score = killed_building_score
                 self.previous_killed_units_score = killed_unit_score
 
-            rl_action = select_action(self.policy, obs.observation['minimap'], current_state)
+            rl_input = np.array([np.pad(obs.observation['minimap'][5], [(0, 20), (0, 20)], mode='constant'), obs.observation['screen'][6]])
+            rl_action = select_action(self.policy, rl_input, current_state)
 
             self.previous_state = current_state
             self.previous_action = rl_action
 
             smart_action, x, y = split_action(self.previous_action)
+            self.actions.append(smart_action)
 
             if smart_action == ACTIONS.ACTION_BUILD_BARRACKS or smart_action == ACTIONS.ACTION_BUILD_SUPPLY_DEPOT:
                 unit_y, unit_x = (unit_type == UNITS.TERRAN_SCV).nonzero()
@@ -214,14 +230,14 @@ class RLAgent(base_agent.BaseAgent):
             smart_action, x, y = split_action(self.previous_action)
 
             if smart_action == ACTIONS.ACTION_BUILD_SUPPLY_DEPOT:
-                if supply_depot_count < 8 and ACTIONS.BUILD_SUPPLY_DEPOT in obs.observation['available_actions']:
+                if ACTIONS.BUILD_SUPPLY_DEPOT in obs.observation['available_actions']:
                     if cc_y.any():
                         target = [int(x), int(y)]
 
                         return actions.FunctionCall(ACTIONS.BUILD_SUPPLY_DEPOT, [MISC.NOT_QUEUED, target])
 
             elif smart_action == ACTIONS.ACTION_BUILD_BARRACKS:
-                if barracks_count < 5 and ACTIONS.BUILD_BARRACKS in obs.observation['available_actions']:
+                if ACTIONS.BUILD_BARRACKS in obs.observation['available_actions']:
                     if cc_y.any():
                         target = [int(x), int(y)]
 
@@ -243,14 +259,9 @@ class RLAgent(base_agent.BaseAgent):
                     do_it = False
 
                 if do_it and ACTIONS.ATTACK_MINIMAP in obs.observation["available_actions"]:
-                    x_offset = random.randint(-1, 1)
-                    y_offset = random.randint(-1, 1)
+                    target = [int(x), int(y)]
 
-                    return actions.FunctionCall(ACTIONS.ATTACK_MINIMAP, [MISC.NOT_QUEUED,
-                                                                         transform_location(self.base_top_left,
-                                                                                            int(x) + (x_offset * 8),
-                                                                                            int(y) + (y_offset * 8))
-                                                                         ])
+                    return actions.FunctionCall(ACTIONS.ATTACK_MINIMAP, [MISC.NOT_QUEUED, target])
 
         elif self.move_number == 2:
             self.move_number = 0
