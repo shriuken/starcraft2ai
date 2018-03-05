@@ -46,7 +46,10 @@ class Policy(nn.Module):
 def select_action(policy, state, state2):
     state = torch.from_numpy(state).float().unsqueeze(0)
     state2 = torch.from_numpy(state2).float().unsqueeze(0)
-    probs = policy(Variable(state), Variable(state2))
+    if torch.cuda.is_available():
+        probs = policy(Variable(state).cuda(), Variable(state2).cuda())
+    else:
+        probs = policy(Variable(state), Variable(state2))
     m = Categorical(probs)
     action = m.sample()
     policy.saved_log_probs.append(m.log_prob(action))
@@ -79,6 +82,8 @@ class RLAgent(base_agent.BaseAgent):
         super(RLAgent, self).__init__()
 
         self.policy = Policy()
+        if torch.cuda.is_available():
+            self.policy = self.policy.cuda()
         self.optimizer = optim.Adam(self.policy.parameters(), lr=1e-2)
 
         self.previous_action = None
@@ -106,7 +111,7 @@ class RLAgent(base_agent.BaseAgent):
         super(RLAgent, self).step(obs)
         self.step_num += 1
         if obs.last():
-            reward = (obs.reward * 25)
+            reward = -25 if obs.reward == 0 else obs.reward * 50
 
             self.policy.rewards.append(reward)
             # plt.plot(self.policy.rewards)
@@ -160,7 +165,8 @@ class RLAgent(base_agent.BaseAgent):
             # enemy_y, enemy_x = (obs.observation['minimap'][MISC.PLAYER_RELATIVE] == MISC.PLAYER_HOSTILE).nonzero()
 
             if self.previous_action is not None:
-                reward = obs.observation['score_cumulative'][0] - self.previous_cumulative_score_total
+                # reward = obs.observation['score_cumulative'][0] - self.previous_cumulative_score_total
+                reward = 0
                 killed_unit_score = obs.observation['score_cumulative'][5]
                 killed_building_score = obs.observation['score_cumulative'][6]
 
@@ -169,7 +175,7 @@ class RLAgent(base_agent.BaseAgent):
                 # if killed_unit_score > self.previous_killed_units_score:
                 #     reward += 0.1
 
-                self.policy.rewards.append(killed_building_score - (0.0001 * self.step_num))
+                self.policy.rewards.append(reward - (0.0001 * self.step_num))
                 # finish_episode(self.policy, self.optimizer)
                 self.previous_cumulative_score_total = obs.observation['score_cumulative'][0]
                 self.previous_killed_building_score = killed_building_score
