@@ -8,77 +8,81 @@ import matplotlib.pyplot as plt
 
 from torch.autograd import Variable
 from torch.distributions import Categorical
-
+from collections import namedtuple
 from pysc2.agents import base_agent
 from actions.actions import *
 from pysc2.lib import actions
 
 DATA_FILE = 'sparse_agent_data'
-
+USE_CUDA = False
+SavedAction = namedtuple('SavedAction', ['log_prob', 'value'])
 
 class Policy(nn.Module):
     def __init__(self):
         super(Policy, self).__init__()
-        self.conv1 = nn.Conv2d(2, 84, kernel_size=3, stride=1)
+        self.conv1 = nn.Conv2d(4, 84, kernel_size=3, stride=1)
         self.bn1 = nn.BatchNorm2d(84)
-        self.mp1 = nn.MaxPool2d(2)
-        self.conv2 = nn.Conv2d(84, 128, kernel_size=3, stride=1)
-        self.bn2 = nn.BatchNorm2d(128)
-        self.mp2 = nn.MaxPool2d(2)
-        self.conv3 = nn.Conv2d(128, 128, kernel_size=3, stride=1)
-        self.bn3 = nn.BatchNorm2d(128)
-        self.mp3 = nn.MaxPool2d(2)
-        # Merging in current state
-        self.lin1 = nn.Linear(8, 128)
-
-        self.affine1 = nn.Linear(8192, 128)
-        self.affine2 = nn.Linear(128, len(ACTIONS.smart_actions))
-
+        self.conv2 = nn.Conv2d(84, 256, kernel_size=3, stride=1)
+        self.bn2 = nn.BatchNorm2d(256)
+        self.conv3 = nn.Conv2d(256, 512, kernel_size=3, stride=1)
+        self.bn3 = nn.BatchNorm2d(512)
+        self.conv4 = nn.Conv2d(512, 256, kernel_size=3, stride=1)
+        self.bn4 = nn.BatchNorm2d(256)
+        self.mp = nn.MaxPool2d(5)
+        self.lin1 = nn.Linear(1024, 4096)
+        self.lin2 = nn.Linear(4096, 1024)
+        self.action_head = nn.Linear(1024, len(ACTIONS.smart_actions))
+        self.value_head = nn.Linear(1024, 1)
         self.saved_log_probs = []
         self.rewards = []
+        self.saved_actions = []
 
-    def forward(self, x, y):
-        x = F.relu(self.mp1(self.bn1(self.conv1(x))))
-        x = F.relu(self.mp2(self.bn2(self.conv2(x))))
-        x = F.relu(self.mp3(self.bn3(self.conv3(x))))
-        x = F.relu(self.affine1(x.view(x.size(0), -1)))
-        x = torch.cat((F.relu(self.lin1(y)), x))
-        action_scores = self.affine2(x)
-        return F.softmax(action_scores, dim=1)
+    def forward(self, x):
+        x = self.mp(F.relu(self.bn1(self.conv1(x))))
+        x = F.relu(self.bn2(self.conv2(x)))
+        x = F.relu(self.bn3(self.conv3(x)))
+        x = self.mp(F.relu(self.bn4(self.conv4(x))))
+        x = F.relu(self.lin1(x.view(x.size(0), -1)))
+        x = F.relu(self.lin2(x))
+        action_scores = self.action_head(x)
+        state_values = self.value_head(x)
+        return F.softmax(action_scores, dim=-1), state_values
 
 
-def select_action(policy, state, state2):
+def select_action(model, state):
     state = torch.from_numpy(state).float().unsqueeze(0)
-    state2 = torch.from_numpy(state2).float().unsqueeze(0)
-    if torch.cuda.is_available():
-        probs = policy(Variable(state).cuda(), Variable(state2).cuda())
+    if USE_CUDA and torch.cuda.is_available():
+        probs, state_value = model(Variable(state).cuda())
     else:
-        probs = policy(Variable(state), Variable(state2))
+        probs, state_value = model(Variable(state))
     m = Categorical(probs)
     action = m.sample()
-    policy.saved_log_probs.append(m.log_prob(action))
+    model.saved_actions.append(SavedAction(m.log_prob(action), state_value))
     return action.data[0]
 
 
-def finish_episode(policy, optimizer):
+def finish_episode(model, optimizer):
     R = 0
-    policy_loss = []
+    saved_actions = model.saved_actions
+    policy_losses = []
+    value_losses = []
     rewards = []
-    for r in policy.rewards[::-1]:
+    for r in model.rewards[::-1]:
         R = r + 0.99 * R
         rewards.insert(0, R)
     rewards = torch.Tensor(rewards)
     rewards = (rewards - rewards.mean()) / (rewards.std() + np.finfo(np.float32).eps)
-    for log_prob, reward in zip(policy.saved_log_probs, rewards):
-        policy_loss.append(-log_prob * reward)
+    for (log_prob, value), r in zip(saved_actions, rewards):
+        reward = r - value.data[0]
+        policy_losses.append(-log_prob * Variable(reward))
+        value_losses.append(F.smooth_l1_loss(value, Variable(torch.Tensor([r]))))
     optimizer.zero_grad()
-    policy_loss = torch.cat(policy_loss).sum()
-    policy_loss.backward()
+    loss = torch.stack(policy_losses).sum() + torch.stack(value_losses).sum()
+    print(loss)
+    loss.backward()
     optimizer.step()
-    del policy.rewards[:]
-    del policy.saved_log_probs[:]
-    torch.save(policy, 'policy.pt')
-    torch.save(optimizer, 'optimizer.pt')
+    del model.rewards[:]
+    del model.saved_actions[:]
 
 
 class RLAgent(base_agent.BaseAgent):
@@ -86,9 +90,9 @@ class RLAgent(base_agent.BaseAgent):
         super(RLAgent, self).__init__()
 
         self.policy = Policy()
-        if torch.cuda.is_available():
+        if USE_CUDA and torch.cuda.is_available():
             self.policy = self.policy.cuda()
-        self.optimizer = optim.Adam(self.policy.parameters(), lr=1e-2)
+        self.optimizer = optim.Adam(self.policy.parameters(), lr=1e-5)
 
         self.previous_action = None
         self.previous_state = None
@@ -97,6 +101,7 @@ class RLAgent(base_agent.BaseAgent):
         self.previous_killed_units_score = 0
         self.won = 0
         self.lost = 0
+        self.tied = 0
         self.step_num = 0
         self.actions = []
 
@@ -116,7 +121,7 @@ class RLAgent(base_agent.BaseAgent):
         super(RLAgent, self).step(obs)
         self.step_num += 1
         if obs.last():
-            reward = -25 if obs.reward == 0 else obs.reward * 50
+            reward = -500 if obs.reward == 0 else obs.reward * 500
 
             self.policy.rewards.append(reward)
             # plt.plot(self.policy.rewards)
@@ -127,10 +132,11 @@ class RLAgent(base_agent.BaseAgent):
             self.move_number = 0
             # Train our network.
             print("Episode Reward: ", sum(self.policy.rewards))
+            plt.figure(figsize=(18.0, 12.0))
             plt.plot(self.actions, '.')
             script_dir = os.path.dirname(__file__)
-            results_dir = os.path.join(script_dir, 'Results1/')
-            sample_file_name = self.episodes
+            results_dir = os.path.join(script_dir, 'A2CResults/')
+            sample_file_name = str(self.episodes)
 
             if not os.path.isdir(results_dir):
                 os.makedirs(results_dir)
@@ -139,6 +145,8 @@ class RLAgent(base_agent.BaseAgent):
             finish_episode(self.policy, self.optimizer)
             if obs.reward > 0:
                 self.won += 1
+            elif obs.reward == 0:
+                self.tied += 1
             else:
                 self.lost += 1
 
@@ -187,16 +195,19 @@ class RLAgent(base_agent.BaseAgent):
                 if killed_building_score > self.previous_killed_building_score:
                     reward += 1
                 if killed_unit_score > self.previous_killed_units_score:
-                    reward += 0.1
+                    reward += 0.05
 
-                self.policy.rewards.append(reward - (0.0001 * self.step_num))
+                self.policy.rewards.append(reward)
                 # finish_episode(self.policy, self.optimizer)
                 self.previous_cumulative_score_total = obs.observation['score_cumulative'][0]
                 self.previous_killed_building_score = killed_building_score
                 self.previous_killed_units_score = killed_unit_score
 
-            rl_input = np.array([np.pad(obs.observation['minimap'][5], [(0, 20), (0, 20)], mode='constant'), obs.observation['screen'][6]])
-            rl_action = select_action(self.policy, rl_input, current_state)
+            rl_input = np.array([np.pad(obs.observation['minimap'][0], [(0, 20), (0, 20)], mode='constant'),
+                                 np.pad(obs.observation['minimap'][1], [(0, 20), (0, 20)], mode='constant'),
+                                 np.pad(obs.observation['minimap'][5], [(0, 20), (0, 20)], mode='constant'),
+                                 obs.observation['screen'][6]])
+            rl_action = select_action(self.policy, rl_input)
 
             self.previous_state = current_state
             self.previous_action = rl_action
