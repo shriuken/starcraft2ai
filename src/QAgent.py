@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 import os
+import gc
 
 import matplotlib.pyplot as plt
 
@@ -12,10 +13,12 @@ from collections import namedtuple
 from pysc2.agents import base_agent
 from actions.actions import *
 from pysc2.lib import actions
+from pympler.tracker import SummaryTracker
 
 DATA_FILE = 'sparse_agent_data'
 USE_CUDA = False
 SavedAction = namedtuple('SavedAction', ['log_prob', 'value'])
+
 
 class Policy(nn.Module):
     def __init__(self):
@@ -37,6 +40,17 @@ class Policy(nn.Module):
         self.rewards = []
         self.saved_actions = []
 
+    def select_action(self, state):
+        state = torch.from_numpy(state).float().unsqueeze(0)
+        if USE_CUDA and torch.cuda.is_available():
+            probs, state_value = self.forward(Variable(state).cuda())
+        else:
+            probs, state_value = self.forward(Variable(state))
+        m = Categorical(probs)
+        action = m.sample()
+        self.saved_actions.append(SavedAction(m.log_prob(action), state_value))
+        return action.data[0]
+
     def forward(self, x):
         x = self.mp(F.relu(self.bn1(self.conv1(x))))
         x = F.relu(self.bn2(self.conv2(x)))
@@ -47,18 +61,6 @@ class Policy(nn.Module):
         action_scores = self.action_head(x)
         state_values = self.value_head(x)
         return F.softmax(action_scores, dim=-1), state_values
-
-
-def select_action(model, state):
-    state = torch.from_numpy(state).float().unsqueeze(0)
-    if USE_CUDA and torch.cuda.is_available():
-        probs, state_value = model(Variable(state).cuda())
-    else:
-        probs, state_value = model(Variable(state))
-    m = Categorical(probs)
-    action = m.sample()
-    model.saved_actions.append(SavedAction(m.log_prob(action), state_value))
-    return action.data[0]
 
 
 def finish_episode(model, optimizer):
@@ -104,8 +106,6 @@ class RLAgent(base_agent.BaseAgent):
         self.tied = 0
         self.step_num = 0
         self.actions = []
-
-
         self.cc_y = None
         self.cc_x = None
 
@@ -169,10 +169,6 @@ class RLAgent(base_agent.BaseAgent):
 
         barracks_y, barracks_x = (unit_type == UNITS.TERRAN_BARRACKS).nonzero()
         barracks_count = int(round(len(barracks_y) / 137))
-        # action = get_action(obs, self.base_top_left, self.move_number, cc_count,
-        #                   supply_depot_count, barracks_count, self.previous_state,
-        #                   self.previous_action, self.qlearn, unit_type,
-        #                   barracks_x, barracks_y, cc_x, cc_y)
 
         if self.move_number == 0:
             self.move_number += 1
@@ -207,7 +203,7 @@ class RLAgent(base_agent.BaseAgent):
                                  np.pad(obs.observation['minimap'][1], [(0, 20), (0, 20)], mode='constant'),
                                  np.pad(obs.observation['minimap'][5], [(0, 20), (0, 20)], mode='constant'),
                                  obs.observation['screen'][6]])
-            rl_action = select_action(self.policy, rl_input)
+            rl_action = self.policy.select_action(rl_input)
 
             self.previous_state = current_state
             self.previous_action = rl_action
