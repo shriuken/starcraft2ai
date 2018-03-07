@@ -3,7 +3,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 import os
-import gc
 
 import matplotlib.pyplot as plt
 
@@ -13,32 +12,40 @@ from collections import namedtuple
 from pysc2.agents import base_agent
 from actions.actions import *
 from pysc2.lib import actions
-from pympler.tracker import SummaryTracker
 
 DATA_FILE = 'sparse_agent_data'
-USE_CUDA = False
+USE_CUDA = True
 SavedAction = namedtuple('SavedAction', ['log_prob', 'value'])
+layer = 2
+num_layers = 20
+
+
+def convolution_layer(x, input_layers):
+    conv1 = nn.Conv2d(input_layers, 256, kernel_size=3, stride=1).cuda()
+    bn1 = nn.BatchNorm2d(256).cuda()
+    return F.relu(bn1(conv1(x)))
+
+
+def residual_layer(x, input_layers, layer_size):
+    conv1 = nn.Conv2d(input_layers, 256, kernel_size=3, stride=1).cuda()
+    bn1 = nn.BatchNorm2d(256).cuda()
+    conv2 = nn.Conv2d(256, 256, kernel_size=3, stride=1).cuda()
+    bn2 = nn.BatchNorm2d(256).cuda()
+    return torch.cat((F.relu(bn2(conv2(F.relu(bn1(conv1(x)))))), x[:, :input_layers, :layer_size, :layer_size]), 1)
 
 
 class Policy(nn.Module):
     def __init__(self):
         super(Policy, self).__init__()
-        self.conv1 = nn.Conv2d(4, 84, kernel_size=3, stride=1)
-        self.bn1 = nn.BatchNorm2d(84)
-        self.conv2 = nn.Conv2d(84, 256, kernel_size=3, stride=1)
-        self.bn2 = nn.BatchNorm2d(256)
-        self.conv3 = nn.Conv2d(256, 512, kernel_size=3, stride=1)
-        self.bn3 = nn.BatchNorm2d(512)
-        self.conv4 = nn.Conv2d(512, 256, kernel_size=3, stride=1)
-        self.bn4 = nn.BatchNorm2d(256)
-        self.mp = nn.MaxPool2d(5)
-        self.lin1 = nn.Linear(1024, 4096)
-        self.lin2 = nn.Linear(4096, 1024)
-        self.action_head = nn.Linear(1024, len(ACTIONS.smart_actions))
-        self.value_head = nn.Linear(1024, 1)
+        residual_out_size = 81920
+        self.mp = nn.MaxPool2d(8)
+        self.lin1 = nn.Linear(residual_out_size, 8192)
+        self.action_head = nn.Linear(8192, len(ACTIONS.smart_actions))
+        self.value_head = nn.Linear(8192, 1)
         self.saved_log_probs = []
         self.rewards = []
         self.saved_actions = []
+        self.updated = 0
 
     def select_action(self, state):
         state = torch.from_numpy(state).float().unsqueeze(0)
@@ -48,22 +55,25 @@ class Policy(nn.Module):
             probs, state_value = self.forward(Variable(state))
         m = Categorical(probs)
         action = m.sample()
-        self.saved_actions.append(SavedAction(m.log_prob(action), state_value))
+        self.saved_actions.append(SavedAction(m.log_prob(action).data[0], state_value.data[0][0]))
+        # self.saved_actions.append(SavedAction(m.log_prob(action), state_value))
         return action.data[0]
 
     def forward(self, x):
-        x = self.mp(F.relu(self.bn1(self.conv1(x))))
-        x = F.relu(self.bn2(self.conv2(x)))
-        x = F.relu(self.bn3(self.conv3(x)))
-        x = self.mp(F.relu(self.bn4(self.conv4(x))))
+        x = convolution_layer(x, layer * num_layers)
+        x = residual_layer(x, 256, 78)
+        x = residual_layer(x, 256 * 2, 74)
+        x = residual_layer(x, 256 * 3, 70)
+        x = self.mp(residual_layer(x, 256 * 4, 66))
         x = F.relu(self.lin1(x.view(x.size(0), -1)))
-        x = F.relu(self.lin2(x))
         action_scores = self.action_head(x)
         state_values = self.value_head(x)
         return F.softmax(action_scores, dim=-1), state_values
 
 
 def finish_episode(model, optimizer):
+    model.updated += 1
+    print("Updated Model: ", model.updated, " times")
     R = 0
     saved_actions = model.saved_actions
     policy_losses = []
@@ -75,9 +85,11 @@ def finish_episode(model, optimizer):
     rewards = torch.Tensor(rewards)
     rewards = (rewards - rewards.mean()) / (rewards.std() + np.finfo(np.float32).eps)
     for (log_prob, value), r in zip(saved_actions, rewards):
+        log_prob = Variable(torch.FloatTensor([log_prob]), requires_grad=True).cuda()
+        value = Variable(torch.FloatTensor([[value]]), requires_grad=True).cuda()
         reward = r - value.data[0]
         policy_losses.append(-log_prob * Variable(reward))
-        value_losses.append(F.smooth_l1_loss(value, Variable(torch.Tensor([r]))))
+        value_losses.append(F.smooth_l1_loss(value, Variable(torch.Tensor([r])).cuda()))
     optimizer.zero_grad()
     loss = torch.stack(policy_losses).sum() + torch.stack(value_losses).sum()
     print(loss)
@@ -86,15 +98,15 @@ def finish_episode(model, optimizer):
     del model.rewards[:]
     del model.saved_actions[:]
 
+policy = Policy()
 
 class RLAgent(base_agent.BaseAgent):
     def __init__(self):
         super(RLAgent, self).__init__()
-
-        self.policy = Policy()
+        self.policy = policy
         if USE_CUDA and torch.cuda.is_available():
             self.policy = self.policy.cuda()
-        self.optimizer = optim.Adam(self.policy.parameters(), lr=1e-5)
+        self.optimizer = optim.Adam(self.policy.parameters(), lr=1e-2)
 
         self.previous_action = None
         self.previous_state = None
@@ -108,6 +120,7 @@ class RLAgent(base_agent.BaseAgent):
         self.actions = []
         self.cc_y = None
         self.cc_x = None
+        self.rl_input = None
 
         self.move_number = 0
 
@@ -115,7 +128,7 @@ class RLAgent(base_agent.BaseAgent):
         # self.qlearn.save_q_table()
         self.episodes += 1
         print("Running episode: ", self.episodes)
-        print("Won: ", self.won, " Lost: ", self.lost)
+        print("Won: ", self.won, " Lost: ", self.lost, "Tied: ", self.tied)
 
     def step(self, obs):
         super(RLAgent, self).step(obs)
@@ -188,10 +201,10 @@ class RLAgent(base_agent.BaseAgent):
                 killed_unit_score = obs.observation['score_cumulative'][5]
                 killed_building_score = obs.observation['score_cumulative'][6]
 
-                if killed_building_score > self.previous_killed_building_score:
-                    reward += 1
-                if killed_unit_score > self.previous_killed_units_score:
-                    reward += 0.05
+                # if killed_building_score > self.previous_killed_building_score:
+                #     reward += 1
+                # if killed_unit_score > self.previous_killed_units_score:
+                #     reward += 0.05
 
                 self.policy.rewards.append(reward)
                 # finish_episode(self.policy, self.optimizer)
@@ -199,37 +212,57 @@ class RLAgent(base_agent.BaseAgent):
                 self.previous_killed_building_score = killed_building_score
                 self.previous_killed_units_score = killed_unit_score
 
-            rl_input = np.array([np.pad(obs.observation['minimap'][0], [(0, 20), (0, 20)], mode='constant'),
-                                 np.pad(obs.observation['minimap'][1], [(0, 20), (0, 20)], mode='constant'),
-                                 np.pad(obs.observation['minimap'][5], [(0, 20), (0, 20)], mode='constant'),
+            # if self.rl_input is None:
+            #     self.rl_input = np.array([np.pad(obs.observation['minimap'][0], [(0, 20), (0, 20)], mode='constant'),
+            #                      np.pad(obs.observation['minimap'][1], [(0, 20), (0, 20)], mode='constant'),
+            #                      np.pad(obs.observation['minimap'][5], [(0, 20), (0, 20)], mode='constant'),
+            #                      obs.observation['screen'][6]])
+            # else:
+            #     self.rl_input = np.concatenate((self.rl_input, np.array([np.pad(obs.observation['minimap'][0], [(0, 20), (0, 20)], mode='constant'),
+            #                      np.pad(obs.observation['minimap'][1], [(0, 20), (0, 20)], mode='constant'),
+            #                      np.pad(obs.observation['minimap'][5], [(0, 20), (0, 20)], mode='constant'),
+            #                      obs.observation['screen'][6]])))
+
+            if self.rl_input is None:
+                self.rl_input = np.array([np.pad(obs.observation['minimap'][5], [(0, 20), (0, 20)], mode='constant'),
                                  obs.observation['screen'][6]])
-            rl_action = self.policy.select_action(rl_input)
+                for _ in range(num_layers - 1):
+                    self.rl_input = np.concatenate((self.rl_input, np.array(
+                        [np.pad(obs.observation['minimap'][5], [(0, 20), (0, 20)], mode='constant'),
+                         obs.observation['screen'][6]])))
+            else:
+                self.rl_input = np.concatenate((self.rl_input, np.array([np.pad(obs.observation['minimap'][5], [(0, 20), (0, 20)], mode='constant'),
+                                 obs.observation['screen'][6]])))
 
-            self.previous_state = current_state
-            self.previous_action = rl_action
+            if self.rl_input.shape == (layer * num_layers, 84, 84):
+                rl_action = self.policy.select_action(self.rl_input)
+                self.rl_input = np.delete(self.rl_input, np.s_[0:2], axis=0)
 
-            smart_action, x, y = split_action(self.previous_action)
-            self.actions.append(smart_action)
+                self.previous_state = current_state
+                self.previous_action = rl_action
 
-            if smart_action == ACTIONS.ACTION_BUILD_BARRACKS or smart_action == ACTIONS.ACTION_BUILD_SUPPLY_DEPOT:
-                unit_y, unit_x = (unit_type == UNITS.TERRAN_SCV).nonzero()
+                smart_action, x, y = split_action(self.previous_action)
+                self.actions.append(smart_action)
 
-                if unit_y.any():
-                    i = random.randint(0, len(unit_y) - 1)
-                    target = [unit_x[i], unit_y[i]]
+                if smart_action == ACTIONS.ACTION_BUILD_BARRACKS or smart_action == ACTIONS.ACTION_BUILD_SUPPLY_DEPOT:
+                    unit_y, unit_x = (unit_type == UNITS.TERRAN_SCV).nonzero()
 
-                    return actions.FunctionCall(ACTIONS.SELECT_POINT, [MISC.NOT_QUEUED, target])
+                    if unit_y.any():
+                        i = random.randint(0, len(unit_y) - 1)
+                        target = [unit_x[i], unit_y[i]]
 
-            elif smart_action == ACTIONS.ACTION_BUILD_MARINE:
-                if barracks_y.any():
-                    i = random.randint(0, len(barracks_y) - 1)
-                    target = [barracks_x[i], barracks_y[i]]
+                        return actions.FunctionCall(ACTIONS.SELECT_POINT, [MISC.NOT_QUEUED, target])
 
-                    return actions.FunctionCall(ACTIONS.SELECT_POINT, [MISC.SELECT_ALL, target])
+                elif smart_action == ACTIONS.ACTION_BUILD_MARINE:
+                    if barracks_y.any():
+                        i = random.randint(0, len(barracks_y) - 1)
+                        target = [barracks_x[i], barracks_y[i]]
 
-            elif smart_action == ACTIONS.ACTION_ATTACK:
-                if ACTIONS.SELECT_ARMY in obs.observation['available_actions']:
-                    return actions.FunctionCall(ACTIONS.SELECT_ARMY, [MISC.NOT_QUEUED])
+                        return actions.FunctionCall(ACTIONS.SELECT_POINT, [MISC.SELECT_ALL, target])
+
+                elif smart_action == ACTIONS.ACTION_ATTACK:
+                    if ACTIONS.SELECT_ARMY in obs.observation['available_actions']:
+                        return actions.FunctionCall(ACTIONS.SELECT_ARMY, [MISC.NOT_QUEUED])
 
         elif self.move_number == 1:
             self.move_number += 1
