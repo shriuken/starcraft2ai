@@ -15,7 +15,7 @@ from actions.actions import *
 from pysc2.lib import actions
 
 DATA_FILE = 'sparse_agent_data'
-USE_CUDA = True
+USE_CUDA = False
 IS_RANDOM = False
 SavedAction = namedtuple('SavedAction', ['log_prob', 'value', 'x', 'y'])
 layer = 2
@@ -23,16 +23,16 @@ num_layers = 4
 
 
 def convolution_layer(x, input_layers):
-    conv1 = nn.Conv2d(input_layers, 256, kernel_size=3, stride=1).cuda()
-    bn1 = nn.BatchNorm2d(256).cuda()
+    conv1 = nn.Conv2d(input_layers, 256, kernel_size=3, stride=1)
+    bn1 = nn.BatchNorm2d(256)
     return F.relu(bn1(conv1(x)))
 
 
 def residual_layer(x, input_layers, layer_size):
-    conv1 = nn.Conv2d(input_layers, 256, kernel_size=3, stride=1).cuda()
-    bn1 = nn.BatchNorm2d(256).cuda()
-    conv2 = nn.Conv2d(256, 256, kernel_size=3, stride=1).cuda()
-    bn2 = nn.BatchNorm2d(256).cuda()
+    conv1 = nn.Conv2d(input_layers, 256, kernel_size=3, stride=1)
+    bn1 = nn.BatchNorm2d(256)
+    conv2 = nn.Conv2d(256, 256, kernel_size=3, stride=1)
+    bn2 = nn.BatchNorm2d(256)
     return torch.cat((F.relu(bn2(conv2(F.relu(bn1(conv1(x)))))), x[:, :input_layers, :layer_size, :layer_size]), 1)
 
 
@@ -63,8 +63,7 @@ class Policy(nn.Module):
         x_coord = x_probs.sample()
         y_coord = y_probs.sample()
         action = m.sample()
-        self.saved_actions.append(SavedAction(m.log_prob(action).data[0], state_value.data[0][0], x_probs.log_prob(x_coord).data[0], y_probs.log_prob(y_coord).data[0]))
-        # self.saved_actions.append(SavedAction(m.log_prob(action), state_value))
+        self.saved_actions.append(SavedAction(m.log_prob(action), state_value, x_probs.log_prob(x_coord), y_probs.log_prob(y_coord)))
         return action.data[0], x_coord, y_coord
 
     def forward(self, x):
@@ -95,13 +94,9 @@ def finish_episode(model, optimizer):
     rewards = torch.Tensor(rewards)
     rewards = (rewards - rewards.mean()) / (rewards.std() + np.finfo(np.float32).eps)
     for (log_prob, value, x_prob, y_prob), r in zip(saved_actions, rewards):
-        log_prob = Variable(torch.FloatTensor([log_prob]), requires_grad=True).cuda()
-        x_prob = Variable(torch.FloatTensor([x_prob]), requires_grad=True).cuda()
-        y_prob = Variable(torch.FloatTensor([y_prob]), requires_grad=True).cuda()
-        value = Variable(torch.FloatTensor([[value]]), requires_grad=True).cuda()
         reward = r - value.data[0]
         policy_losses.append(-log_prob * Variable(reward) + -x_prob * Variable(reward) + -y_prob * Variable(reward))
-        value_losses.append(F.smooth_l1_loss(value, Variable(torch.Tensor([r])).cuda()))
+        value_losses.append(F.smooth_l1_loss(value, Variable(torch.Tensor([r]))))
     optimizer.zero_grad()
     loss = torch.stack(policy_losses).sum() + torch.stack(value_losses).sum()
     print(loss)
@@ -146,9 +141,8 @@ class RLAgent(base_agent.BaseAgent):
 
     def step(self, obs):
 
-        if IS_RANDOM:
-            if self.step_num % 3 != 0:
-                return
+        if self.step_num % 10 != 0:
+            actions.FunctionCall(ACTIONS.NO_OP, [])
 
         super(RLAgent, self).step(obs)
         self.step_num += 1
