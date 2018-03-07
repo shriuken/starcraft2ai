@@ -19,7 +19,7 @@ USE_CUDA = False
 IS_RANDOM = False
 SavedAction = namedtuple('SavedAction', ['log_prob', 'value', 'x', 'y'])
 layer = 2
-num_layers = 4
+num_layers = 1
 
 
 def convolution_layer(x, input_layers):
@@ -33,13 +33,13 @@ def residual_layer(x, input_layers, layer_size):
     bn1 = nn.BatchNorm2d(256)
     conv2 = nn.Conv2d(256, 256, kernel_size=3, stride=1)
     bn2 = nn.BatchNorm2d(256)
-    return torch.cat((F.relu(bn2(conv2(F.relu(bn1(conv1(x)))))), x[:, :input_layers, :layer_size, :layer_size]), 1)
+    return F.relu(bn2(conv2(F.relu(bn1(conv1(x))))))
 
 
 class Policy(nn.Module):
     def __init__(self):
         super(Policy, self).__init__()
-        residual_out_size = 62208
+        residual_out_size = 20736
         self.mp = nn.MaxPool2d(8)
         self.lin1 = nn.Linear(residual_out_size, 2048)
         self.action_head = nn.Linear(2048, len(ACTIONS.smart_actions))
@@ -63,15 +63,12 @@ class Policy(nn.Module):
         x_coord = x_probs.sample()
         y_coord = y_probs.sample()
         action = m.sample()
-        self.saved_actions.append(SavedAction(m.log_prob(action), state_value, x_probs.log_prob(x_coord), y_probs.log_prob(y_coord)))
+        self.saved_actions.append([m.log_prob(action), state_value, x_probs.log_prob(x_coord), y_probs.log_prob(y_coord)])
         return action.data[0], x_coord, y_coord
 
     def forward(self, x):
         x = convolution_layer(x, layer * num_layers)
-        x = residual_layer(x, 256, 78)
-        # x = residual_layer(x, 256 * 2, 74)
-        # x = residual_layer(x, 256 * 3, 70)
-        x = self.mp(residual_layer(x, 256 * 2, 74))
+        x = self.mp(residual_layer(x, 256, 78))
         x = F.relu(self.lin1(x.view(x.size(0), -1)))
         action_scores = self.action_head(x)
         state_values = self.value_head(x)
@@ -141,8 +138,8 @@ class RLAgent(base_agent.BaseAgent):
 
     def step(self, obs):
 
-        if self.step_num % 10 != 0:
-            actions.FunctionCall(ACTIONS.NO_OP, [])
+        if self.step_num > 0 and self.step_num % 200 == 0:
+            finish_episode(self.policy, self.optimizer)
 
         super(RLAgent, self).step(obs)
         self.step_num += 1
