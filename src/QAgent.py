@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 import os
+from random import randrange
 
 import matplotlib.pyplot as plt
 
@@ -15,9 +16,10 @@ from pysc2.lib import actions
 
 DATA_FILE = 'sparse_agent_data'
 USE_CUDA = True
-SavedAction = namedtuple('SavedAction', ['log_prob', 'value'])
+IS_RANDOM = False
+SavedAction = namedtuple('SavedAction', ['log_prob', 'value', 'x', 'y'])
 layer = 2
-num_layers = 20
+num_layers = 4
 
 
 def convolution_layer(x, input_layers):
@@ -37,11 +39,13 @@ def residual_layer(x, input_layers, layer_size):
 class Policy(nn.Module):
     def __init__(self):
         super(Policy, self).__init__()
-        residual_out_size = 81920
+        residual_out_size = 62208
         self.mp = nn.MaxPool2d(8)
-        self.lin1 = nn.Linear(residual_out_size, 8192)
-        self.action_head = nn.Linear(8192, len(ACTIONS.smart_actions))
-        self.value_head = nn.Linear(8192, 1)
+        self.lin1 = nn.Linear(residual_out_size, 2048)
+        self.action_head = nn.Linear(2048, len(ACTIONS.smart_actions))
+        self.value_head = nn.Linear(2048, 1)
+        self.x = nn.Linear(2048, 64)
+        self.y = nn.Linear(2048, 64)
         self.saved_log_probs = []
         self.rewards = []
         self.saved_actions = []
@@ -50,25 +54,31 @@ class Policy(nn.Module):
     def select_action(self, state):
         state = torch.from_numpy(state).float().unsqueeze(0)
         if USE_CUDA and torch.cuda.is_available():
-            probs, state_value = self.forward(Variable(state).cuda())
+            probs, state_value, x, y = self.forward(Variable(state).cuda())
         else:
-            probs, state_value = self.forward(Variable(state))
+            probs, state_value, x, y = self.forward(Variable(state))
         m = Categorical(probs)
+        x_probs = Categorical(x)
+        y_probs = Categorical(y)
+        x_coord = x_probs.sample()
+        y_coord = y_probs.sample()
         action = m.sample()
-        self.saved_actions.append(SavedAction(m.log_prob(action).data[0], state_value.data[0][0]))
+        self.saved_actions.append(SavedAction(m.log_prob(action).data[0], state_value.data[0][0], x_probs.log_prob(x_coord).data[0], y_probs.log_prob(y_coord).data[0]))
         # self.saved_actions.append(SavedAction(m.log_prob(action), state_value))
-        return action.data[0]
+        return action.data[0], x_coord, y_coord
 
     def forward(self, x):
         x = convolution_layer(x, layer * num_layers)
         x = residual_layer(x, 256, 78)
-        x = residual_layer(x, 256 * 2, 74)
-        x = residual_layer(x, 256 * 3, 70)
-        x = self.mp(residual_layer(x, 256 * 4, 66))
+        # x = residual_layer(x, 256 * 2, 74)
+        # x = residual_layer(x, 256 * 3, 70)
+        x = self.mp(residual_layer(x, 256 * 2, 74))
         x = F.relu(self.lin1(x.view(x.size(0), -1)))
         action_scores = self.action_head(x)
         state_values = self.value_head(x)
-        return F.softmax(action_scores, dim=-1), state_values
+        x_coord = self.x(x)
+        y_coord = self.y(x)
+        return F.softmax(action_scores, dim=-1), state_values, F.softmax(x_coord, dim=-1), F.softmax(y_coord, dim=-1)
 
 
 def finish_episode(model, optimizer):
@@ -84,11 +94,13 @@ def finish_episode(model, optimizer):
         rewards.insert(0, R)
     rewards = torch.Tensor(rewards)
     rewards = (rewards - rewards.mean()) / (rewards.std() + np.finfo(np.float32).eps)
-    for (log_prob, value), r in zip(saved_actions, rewards):
+    for (log_prob, value, x_prob, y_prob), r in zip(saved_actions, rewards):
         log_prob = Variable(torch.FloatTensor([log_prob]), requires_grad=True).cuda()
+        x_prob = Variable(torch.FloatTensor([x_prob]), requires_grad=True).cuda()
+        y_prob = Variable(torch.FloatTensor([y_prob]), requires_grad=True).cuda()
         value = Variable(torch.FloatTensor([[value]]), requires_grad=True).cuda()
         reward = r - value.data[0]
-        policy_losses.append(-log_prob * Variable(reward))
+        policy_losses.append(-log_prob * Variable(reward) + -x_prob * Variable(reward) + -y_prob * Variable(reward))
         value_losses.append(F.smooth_l1_loss(value, Variable(torch.Tensor([r])).cuda()))
     optimizer.zero_grad()
     loss = torch.stack(policy_losses).sum() + torch.stack(value_losses).sum()
@@ -98,7 +110,9 @@ def finish_episode(model, optimizer):
     del model.rewards[:]
     del model.saved_actions[:]
 
+
 policy = Policy()
+
 
 class RLAgent(base_agent.BaseAgent):
     def __init__(self):
@@ -106,7 +120,7 @@ class RLAgent(base_agent.BaseAgent):
         self.policy = policy
         if USE_CUDA and torch.cuda.is_available():
             self.policy = self.policy.cuda()
-        self.optimizer = optim.Adam(self.policy.parameters(), lr=1e-2)
+        self.optimizer = optim.Adam(self.policy.parameters(), lr=0.01)
 
         self.previous_action = None
         self.previous_state = None
@@ -131,10 +145,15 @@ class RLAgent(base_agent.BaseAgent):
         print("Won: ", self.won, " Lost: ", self.lost, "Tied: ", self.tied)
 
     def step(self, obs):
+
+        if IS_RANDOM:
+            if self.step_num % 3 != 0:
+                return
+
         super(RLAgent, self).step(obs)
         self.step_num += 1
         if obs.last():
-            reward = -500 if obs.reward == 0 else obs.reward * 500
+            reward = obs.reward * 15
 
             self.policy.rewards.append(reward)
             # plt.plot(self.policy.rewards)
@@ -143,19 +162,20 @@ class RLAgent(base_agent.BaseAgent):
             self.previous_state = None
 
             self.move_number = 0
-            # Train our network.
-            print("Episode Reward: ", sum(self.policy.rewards))
-            plt.figure(figsize=(18.0, 12.0))
-            plt.plot(self.actions, '.')
-            script_dir = os.path.dirname(__file__)
-            results_dir = os.path.join(script_dir, 'A2CResults/')
-            sample_file_name = str(self.episodes)
+            if IS_RANDOM is False:
+                # Train our network.
+                print("Episode Reward: ", sum(self.policy.rewards))
+                plt.figure(figsize=(18.0, 12.0))
+                plt.plot(self.actions, '.')
+                script_dir = os.path.dirname(__file__)
+                results_dir = os.path.join(script_dir, 'A2CResults/')
+                sample_file_name = str(self.episodes)
 
-            if not os.path.isdir(results_dir):
-                os.makedirs(results_dir)
+                if not os.path.isdir(results_dir):
+                    os.makedirs(results_dir)
 
-            plt.savefig(results_dir + sample_file_name)
-            finish_episode(self.policy, self.optimizer)
+                plt.savefig(results_dir + sample_file_name)
+                finish_episode(self.policy, self.optimizer)
             if obs.reward > 0:
                 self.won += 1
             elif obs.reward == 0:
@@ -201,10 +221,10 @@ class RLAgent(base_agent.BaseAgent):
                 killed_unit_score = obs.observation['score_cumulative'][5]
                 killed_building_score = obs.observation['score_cumulative'][6]
 
-                # if killed_building_score > self.previous_killed_building_score:
-                #     reward += 1
-                # if killed_unit_score > self.previous_killed_units_score:
-                #     reward += 0.05
+                if killed_building_score > self.previous_killed_building_score:
+                    reward += 1
+                if killed_unit_score > self.previous_killed_units_score:
+                    reward += 0.05
 
                 self.policy.rewards.append(reward)
                 # finish_episode(self.policy, self.optimizer)
@@ -212,36 +232,31 @@ class RLAgent(base_agent.BaseAgent):
                 self.previous_killed_building_score = killed_building_score
                 self.previous_killed_units_score = killed_unit_score
 
-            # if self.rl_input is None:
-            #     self.rl_input = np.array([np.pad(obs.observation['minimap'][0], [(0, 20), (0, 20)], mode='constant'),
-            #                      np.pad(obs.observation['minimap'][1], [(0, 20), (0, 20)], mode='constant'),
-            #                      np.pad(obs.observation['minimap'][5], [(0, 20), (0, 20)], mode='constant'),
-            #                      obs.observation['screen'][6]])
-            # else:
-            #     self.rl_input = np.concatenate((self.rl_input, np.array([np.pad(obs.observation['minimap'][0], [(0, 20), (0, 20)], mode='constant'),
-            #                      np.pad(obs.observation['minimap'][1], [(0, 20), (0, 20)], mode='constant'),
-            #                      np.pad(obs.observation['minimap'][5], [(0, 20), (0, 20)], mode='constant'),
-            #                      obs.observation['screen'][6]])))
+            if IS_RANDOM is False:
+                if self.rl_input is None:
+                    self.rl_input = np.array([np.pad(obs.observation['minimap'][5], [(0, 20), (0, 20)], mode='constant'),
+                                     obs.observation['screen'][6]])
+                    for _ in range(num_layers - 1):
+                        self.rl_input = np.concatenate((self.rl_input, np.array(
+                            [np.pad(obs.observation['minimap'][5], [(0, 20), (0, 20)], mode='constant'),
+                             obs.observation['screen'][6]])))
+                else:
+                    self.rl_input = np.concatenate((self.rl_input, np.array([np.pad(obs.observation['minimap'][5], [(0, 20), (0, 20)], mode='constant'),
+                                     obs.observation['screen'][6]])))
 
-            if self.rl_input is None:
-                self.rl_input = np.array([np.pad(obs.observation['minimap'][5], [(0, 20), (0, 20)], mode='constant'),
-                                 obs.observation['screen'][6]])
-                for _ in range(num_layers - 1):
-                    self.rl_input = np.concatenate((self.rl_input, np.array(
-                        [np.pad(obs.observation['minimap'][5], [(0, 20), (0, 20)], mode='constant'),
-                         obs.observation['screen'][6]])))
-            else:
-                self.rl_input = np.concatenate((self.rl_input, np.array([np.pad(obs.observation['minimap'][5], [(0, 20), (0, 20)], mode='constant'),
-                                 obs.observation['screen'][6]])))
-
-            if self.rl_input.shape == (layer * num_layers, 84, 84):
-                rl_action = self.policy.select_action(self.rl_input)
-                self.rl_input = np.delete(self.rl_input, np.s_[0:2], axis=0)
+            if IS_RANDOM or self.rl_input.shape == (layer * num_layers, 84, 84):
+                if IS_RANDOM:
+                    rl_action = randrange(0, len(ACTIONS.smart_actions))
+                else:
+                    rl_action, x, y = self.policy.select_action(self.rl_input)
+                    self.rl_input = np.delete(self.rl_input, np.s_[0:2], axis=0)
 
                 self.previous_state = current_state
                 self.previous_action = rl_action
+                self.prev_x = x
+                self.prev_y = y
 
-                smart_action, x, y = split_action(self.previous_action)
+                smart_action = ACTIONS.smart_actions[rl_action]
                 self.actions.append(smart_action)
 
                 if smart_action == ACTIONS.ACTION_BUILD_BARRACKS or smart_action == ACTIONS.ACTION_BUILD_SUPPLY_DEPOT:
@@ -267,7 +282,9 @@ class RLAgent(base_agent.BaseAgent):
         elif self.move_number == 1:
             self.move_number += 1
 
-            smart_action, x, y = split_action(self.previous_action)
+            smart_action = ACTIONS.smart_actions[self.previous_action]
+            x = self.prev_x
+            y = self.prev_y
 
             if smart_action == ACTIONS.ACTION_BUILD_SUPPLY_DEPOT:
                 if ACTIONS.BUILD_SUPPLY_DEPOT in obs.observation['available_actions']:
@@ -306,7 +323,9 @@ class RLAgent(base_agent.BaseAgent):
         elif self.move_number == 2:
             self.move_number = 0
 
-            smart_action, x, y = split_action(self.previous_action)
+            smart_action = ACTIONS.smart_actions[self.previous_action]
+            x = self.prev_x
+            y = self.prev_y
 
             if smart_action == ACTIONS.ACTION_BUILD_BARRACKS or smart_action == ACTIONS.ACTION_BUILD_SUPPLY_DEPOT:
                 if ACTIONS.HARVEST_GATHER in obs.observation['available_actions']:

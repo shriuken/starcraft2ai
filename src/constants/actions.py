@@ -20,20 +20,17 @@ ACTION_ATTACK = 'attack'
 
 smart_actions = [
     ACTION_DO_NOTHING,
-    ACTION_SELECT_SCV,
     ACTION_BUILD_SUPPLY_DEPOT,
     ACTION_BUILD_BARRACKS,
-    ACTION_SELECT_BARRACKS,
     ACTION_BUILD_MARINE,
-    ACTION_SELECT_ARMY,
     ACTION_ATTACK,
 ]
 
-for mm_x in range(0, 64):
-    for mm_y in range(0, 64):
-        if mm_x % 3 == 0 and mm_y % 3 == 0:
-            smart_actions.append(ACTION_DO_NOTHING)
-            smart_actions.append(ACTION_BUILD_MARINE)
-            smart_actions.append(ACTION_BUILD_BARRACKS + '_' + str(mm_x) + '_' + str(mm_y))
-            smart_actions.append(ACTION_BUILD_SUPPLY_DEPOT + '_' + str(mm_x) + '_' + str(mm_y))
-            smart_actions.append(ACTION_ATTACK + '_' + str(mm_x) + '_' + str(mm_y))
+# for mm_x in range(0, 64):
+#     for mm_y in range(0, 64):
+#         if mm_x % 3 == 0 and mm_y % 3 == 0:
+#             smart_actions.append(ACTION_DO_NOTHING)
+#             smart_actions.append(ACTION_BUILD_MARINE)
+#             smart_actions.append(ACTION_BUILD_BARRACKS + '_' + str(mm_x) + '_' + str(mm_y))
+#             smart_actions.append(ACTION_BUILD_SUPPLY_DEPOT + '_' + str(mm_x) + '_' + str(mm_y))
+#             smart_actions.append(ACTION_ATTACK + '_' + str(mm_x) + '_' + str(mm_y))
