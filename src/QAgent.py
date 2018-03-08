@@ -14,12 +14,15 @@ from pysc2.agents import base_agent
 from actions.actions import *
 from pysc2.lib import actions
 from random import randrange
+from math import log
 
 DATA_FILE = 'sparse_agent_data'
 USE_CUDA = True
 IS_RANDOM = False
 resume = False
 resume_best = False
+evaluate = False
+
 SavedAction = namedtuple('SavedAction', ['log_prob', 'value', 'x', 'y'])
 layer = 4
 num_layers = 3
@@ -77,7 +80,8 @@ class Policy(nn.Module):
         x_coord = x_probs.sample()
         y_coord = y_probs.sample()
         action = m.sample()
-        self.saved_actions.append([m.log_prob(action), state_value, x_probs.log_prob(x_coord), y_probs.log_prob(y_coord)])
+        if not evaluate:
+            self.saved_actions.append([m.log_prob(action), state_value, x_probs.log_prob(x_coord), y_probs.log_prob(y_coord)])
         return action.data[0], x_coord, y_coord
 
     def forward(self, x):
@@ -148,6 +152,8 @@ class RLAgent(base_agent.BaseAgent):
         self.cc_y = None
         self.cc_x = None
         self.rl_input = None
+        # This is to amp up rewards earlier and taper them off later
+        # self.time_scalar = (0.0001 * self.step_num)
 
         self.move_number = 0
 
@@ -156,11 +162,11 @@ class RLAgent(base_agent.BaseAgent):
             if os.path.isfile(file_to_load):
                 print("=> loading checkpoint '{}'".format(file_to_load))
                 checkpoint = torch.load(file_to_load)
-                self.episodes = checkpoint['episode']
+                self.episodes = checkpoint['epoch']
                 self.policy.load_state_dict(checkpoint['state_dict'])
                 self.optimizer.load_state_dict(checkpoint['optimizer'])
                 print("=> loaded checkpoint '{}' (epoch {})"
-                      .format(file_to_load, checkpoint['episode']))
+                      .format(file_to_load, checkpoint['epoch']))
             else:
                 print("=> no checkpoint found at '{}'".format(file_to_load))
 
@@ -174,7 +180,7 @@ class RLAgent(base_agent.BaseAgent):
         super(RLAgent, self).step(obs)
         self.step_num += 1
         if obs.last():
-            reward = obs.reward * 15
+            reward = obs.reward * 25
 
             self.policy.rewards.append(reward)
             # plt.plot(self.policy.rewards)
@@ -198,8 +204,9 @@ class RLAgent(base_agent.BaseAgent):
                     os.makedirs(results_dir)
 
                 plt.savefig(results_dir + sample_file_name)
-                is_best = sum(self.episode_rewards) / len(self.episode_rewards) > sum(self.episode_rewards[:(len(self.episode_rewards)) - 1]) / len(self.episode_rewards)
-                finish_episode(self.policy, self.optimizer, is_best, self.episodes)
+                is_best = sum(self.episode_rewards) / len(self.episode_rewards) > sum(self.episode_rewards[:(len(self.episode_rewards)) - 1]) / len(self.episode_rewards) - 1
+                if not evaluate:
+                    finish_episode(self.policy, self.optimizer, is_best, self.episodes)
             if obs.reward > 0:
                 self.won += 1
             elif obs.reward == 0:
@@ -248,7 +255,7 @@ class RLAgent(base_agent.BaseAgent):
                 if killed_building_score > self.previous_killed_building_score:
                     reward += 1
                 if killed_unit_score > self.previous_killed_units_score:
-                    reward += 0.05
+                    reward += 0.2
 
                 self.policy.rewards.append(reward)
                 # finish_episode(self.policy, self.optimizer)
@@ -274,6 +281,8 @@ class RLAgent(base_agent.BaseAgent):
             if IS_RANDOM or self.rl_input.shape == (layer * num_layers, 84, 84):
                 if IS_RANDOM:
                     rl_action = randrange(0, len(ACTIONS.smart_actions))
+                    x = randrange(0, 64)
+                    y = randrange(0, 64)
                 else:
                     rl_action, x, y = self.policy.select_action(self.rl_input)
                     self.rl_input = np.delete(self.rl_input, np.s_[0:layer], axis=0)
