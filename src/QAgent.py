@@ -15,7 +15,7 @@ from actions.actions import *
 from pysc2.lib import actions
 
 DATA_FILE = 'sparse_agent_data'
-USE_CUDA = False
+USE_CUDA = True
 IS_RANDOM = False
 SavedAction = namedtuple('SavedAction', ['log_prob', 'value', 'x', 'y'])
 layer = 2
@@ -23,16 +23,16 @@ num_layers = 1
 
 
 def convolution_layer(x, input_layers):
-    conv1 = nn.Conv2d(input_layers, 256, kernel_size=3, stride=1)
-    bn1 = nn.BatchNorm2d(256)
+    conv1 = nn.Conv2d(input_layers, 256, kernel_size=3, stride=1).cuda()
+    bn1 = nn.BatchNorm2d(256).cuda()
     return F.relu(bn1(conv1(x)))
 
 
 def residual_layer(x, input_layers, layer_size):
-    conv1 = nn.Conv2d(input_layers, 256, kernel_size=3, stride=1)
-    bn1 = nn.BatchNorm2d(256)
-    conv2 = nn.Conv2d(256, 256, kernel_size=3, stride=1)
-    bn2 = nn.BatchNorm2d(256)
+    conv1 = nn.Conv2d(input_layers, 256, kernel_size=3, stride=1).cuda()
+    bn1 = nn.BatchNorm2d(256).cuda()
+    conv2 = nn.Conv2d(256, 256, kernel_size=3, stride=1).cuda()
+    bn2 = nn.BatchNorm2d(256).cuda()
     return F.relu(bn2(conv2(F.relu(bn1(conv1(x))))))
 
 
@@ -41,11 +41,11 @@ class Policy(nn.Module):
         super(Policy, self).__init__()
         residual_out_size = 20736
         self.mp = nn.MaxPool2d(8)
-        self.lin1 = nn.Linear(residual_out_size, 2048)
-        self.action_head = nn.Linear(2048, len(ACTIONS.smart_actions))
-        self.value_head = nn.Linear(2048, 1)
-        self.x = nn.Linear(2048, 64)
-        self.y = nn.Linear(2048, 64)
+        self.lin1 = nn.Linear(residual_out_size, 2048).cuda()
+        self.action_head = nn.Linear(2048, len(ACTIONS.smart_actions)).cuda()
+        self.value_head = nn.Linear(2048, 1).cuda()
+        self.x = nn.Linear(2048, 64).cuda()
+        self.y = nn.Linear(2048, 64).cuda()
         self.saved_log_probs = []
         self.rewards = []
         self.saved_actions = []
@@ -54,7 +54,7 @@ class Policy(nn.Module):
     def select_action(self, state):
         state = torch.from_numpy(state).float().unsqueeze(0)
         if USE_CUDA and torch.cuda.is_available():
-            probs, state_value, x, y = self.forward(Variable(state).cuda())
+            probs, state_value, x, y = self.forward(Variable(state, ).cuda())
         else:
             probs, state_value, x, y = self.forward(Variable(state))
         m = Categorical(probs)
@@ -63,7 +63,7 @@ class Policy(nn.Module):
         x_coord = x_probs.sample()
         y_coord = y_probs.sample()
         action = m.sample()
-        self.saved_actions.append([m.log_prob(action), state_value, x_probs.log_prob(x_coord), y_probs.log_prob(y_coord)])
+        self.saved_actions.append([m.log_prob(action).data, state_value.data, x_probs.log_prob(x_coord).data, y_probs.log_prob(y_coord).data])
         return action.data[0], x_coord, y_coord
 
     def forward(self, x):
@@ -93,7 +93,7 @@ def finish_episode(model, optimizer):
     for (log_prob, value, x_prob, y_prob), r in zip(saved_actions, rewards):
         reward = r - value.data[0]
         policy_losses.append(-log_prob * Variable(reward) + -x_prob * Variable(reward) + -y_prob * Variable(reward))
-        value_losses.append(F.smooth_l1_loss(value, Variable(torch.Tensor([r]))))
+        value_losses.append(F.smooth_l1_loss(value, Variable(torch.Tensor([r])).cuda()))
     optimizer.zero_grad()
     loss = torch.stack(policy_losses).sum() + torch.stack(value_losses).sum()
     print(loss)
@@ -137,10 +137,6 @@ class RLAgent(base_agent.BaseAgent):
         print("Won: ", self.won, " Lost: ", self.lost, "Tied: ", self.tied)
 
     def step(self, obs):
-
-        if self.step_num > 0 and self.step_num % 200 == 0:
-            finish_episode(self.policy, self.optimizer)
-
         super(RLAgent, self).step(obs)
         self.step_num += 1
         if obs.last():
