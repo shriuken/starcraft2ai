@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 import os
-from random import randrange
+import shutil
 
 import matplotlib.pyplot as plt
 
@@ -13,13 +13,16 @@ from collections import namedtuple
 from pysc2.agents import base_agent
 from actions.actions import *
 from pysc2.lib import actions
+from random import randrange
 
 DATA_FILE = 'sparse_agent_data'
 USE_CUDA = True
 IS_RANDOM = False
+resume = False
+resume_best = False
 SavedAction = namedtuple('SavedAction', ['log_prob', 'value', 'x', 'y'])
-layer = 2
-num_layers = 1
+layer = 4
+num_layers = 3
 
 
 def convolution_layer(x, input_layers):
@@ -36,10 +39,16 @@ def residual_layer(x, input_layers, layer_size):
     return F.relu(bn2(conv2(F.relu(bn1(conv1(x))))))
 
 
+def save_checkpoint(state, is_best, filename='checkpoint.pth.tar'):
+    torch.save(state, filename)
+    if is_best:
+        shutil.copyfile(filename, 'model_best.pth.tar')
+
+
 class Policy(nn.Module):
     def __init__(self):
         super(Policy, self).__init__()
-        self.conv1 = nn.Conv2d(2, 84, kernel_size=5, stride=2).cuda()
+        self.conv1 = nn.Conv2d(layer * num_layers, 84, kernel_size=5, stride=2).cuda()
         self.bn1 = nn.BatchNorm2d(84).cuda()
         self.conv2 = nn.Conv2d(84, 128, kernel_size=5, stride=2).cuda()
         self.bn2 = nn.BatchNorm2d(128).cuda()
@@ -83,7 +92,7 @@ class Policy(nn.Module):
         return F.softmax(action_scores, dim=-1), state_values, F.softmax(x_coord, dim=-1), F.softmax(y_coord, dim=-1)
 
 
-def finish_episode(model, optimizer):
+def finish_episode(model, optimizer, is_best, episode):
     model.updated += 1
     print("Updated Model: ", model.updated, " times")
     R = 0
@@ -105,6 +114,11 @@ def finish_episode(model, optimizer):
     print(loss)
     loss.backward()
     optimizer.step()
+    save_checkpoint({
+        'epoch': episode + 1,
+        'state_dict': model.state_dict(),
+        'optimizer': optimizer.state_dict(),
+    }, is_best)
     del model.rewards[:]
     del model.saved_actions[:]
 
@@ -130,11 +144,25 @@ class RLAgent(base_agent.BaseAgent):
         self.tied = 0
         self.step_num = 0
         self.actions = []
+        self.episode_rewards = []
         self.cc_y = None
         self.cc_x = None
         self.rl_input = None
 
         self.move_number = 0
+
+        if resume:
+            file_to_load = "model_best.pth.tar" if resume_best else "checkpoint.pth.tar"
+            if os.path.isfile(file_to_load):
+                print("=> loading checkpoint '{}'".format(file_to_load))
+                checkpoint = torch.load(file_to_load)
+                self.episodes = checkpoint['episode']
+                self.policy.load_state_dict(checkpoint['state_dict'])
+                self.optimizer.load_state_dict(checkpoint['optimizer'])
+                print("=> loaded checkpoint '{}' (epoch {})"
+                      .format(file_to_load, checkpoint['episode']))
+            else:
+                print("=> no checkpoint found at '{}'".format(file_to_load))
 
     def reset(self):
         # self.qlearn.save_q_table()
@@ -158,8 +186,10 @@ class RLAgent(base_agent.BaseAgent):
             if IS_RANDOM is False:
                 # Train our network.
                 print("Episode Reward: ", sum(self.policy.rewards))
+                # Keep track of the episode rewards.
+                self.episode_rewards.append(sum(self.policy.rewards))
                 plt.figure(figsize=(18.0, 12.0))
-                plt.plot(self.actions, '.')
+                plt.plot(self.episode_rewards)
                 script_dir = os.path.dirname(__file__)
                 results_dir = os.path.join(script_dir, 'A2CResults/')
                 sample_file_name = str(self.episodes)
@@ -168,7 +198,8 @@ class RLAgent(base_agent.BaseAgent):
                     os.makedirs(results_dir)
 
                 plt.savefig(results_dir + sample_file_name)
-                finish_episode(self.policy, self.optimizer)
+                is_best = sum(self.episode_rewards) / len(self.episode_rewards) > sum(self.episode_rewards[:(len(self.episode_rewards)) - 1]) / len(self.episode_rewards)
+                finish_episode(self.policy, self.optimizer, is_best, self.episodes)
             if obs.reward > 0:
                 self.won += 1
             elif obs.reward == 0:
@@ -225,24 +256,27 @@ class RLAgent(base_agent.BaseAgent):
                 self.previous_killed_building_score = killed_building_score
                 self.previous_killed_units_score = killed_unit_score
 
+            cur_state = np.array([
+                np.pad(obs.observation['minimap'][5], [(0, 20), (0, 20)], mode='constant'),
+                obs.observation['screen'][6],
+                np.resize(np.array(obs.observation['player'][1]), (84, 84)),
+                np.resize(np.array(obs.observation['player'][8]), (84, 84))
+            ])
+
             if IS_RANDOM is False:
                 if self.rl_input is None:
-                    self.rl_input = np.array([np.pad(obs.observation['minimap'][5], [(0, 20), (0, 20)], mode='constant'),
-                                     obs.observation['screen'][6]])
+                    self.rl_input = cur_state
                     for _ in range(num_layers - 1):
-                        self.rl_input = np.concatenate((self.rl_input, np.array(
-                            [np.pad(obs.observation['minimap'][5], [(0, 20), (0, 20)], mode='constant'),
-                             obs.observation['screen'][6]])))
+                        self.rl_input = np.concatenate((self.rl_input, cur_state))
                 else:
-                    self.rl_input = np.concatenate((self.rl_input, np.array([np.pad(obs.observation['minimap'][5], [(0, 20), (0, 20)], mode='constant'),
-                                     obs.observation['screen'][6]])))
+                    self.rl_input = np.concatenate((self.rl_input, cur_state))
 
             if IS_RANDOM or self.rl_input.shape == (layer * num_layers, 84, 84):
                 if IS_RANDOM:
                     rl_action = randrange(0, len(ACTIONS.smart_actions))
                 else:
                     rl_action, x, y = self.policy.select_action(self.rl_input)
-                    self.rl_input = np.delete(self.rl_input, np.s_[0:2], axis=0)
+                    self.rl_input = np.delete(self.rl_input, np.s_[0:layer], axis=0)
 
                 self.previous_state = current_state
                 self.previous_action = rl_action
