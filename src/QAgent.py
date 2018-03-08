@@ -39,13 +39,18 @@ def residual_layer(x, input_layers, layer_size):
 class Policy(nn.Module):
     def __init__(self):
         super(Policy, self).__init__()
-        residual_out_size = 20736
-        self.mp = nn.MaxPool2d(8)
-        self.lin1 = nn.Linear(residual_out_size, 2048).cuda()
-        self.action_head = nn.Linear(2048, len(ACTIONS.smart_actions)).cuda()
-        self.value_head = nn.Linear(2048, 1).cuda()
-        self.x = nn.Linear(2048, 64).cuda()
-        self.y = nn.Linear(2048, 64).cuda()
+        self.conv1 = nn.Conv2d(2, 84, kernel_size=5, stride=2).cuda()
+        self.bn1 = nn.BatchNorm2d(84).cuda()
+        self.conv2 = nn.Conv2d(84, 128, kernel_size=5, stride=2).cuda()
+        self.bn2 = nn.BatchNorm2d(128).cuda()
+        self.conv3 = nn.Conv2d(128, 128, kernel_size=5, stride=2).cuda()
+        self.bn3 = nn.BatchNorm2d(128).cuda()
+
+        self.lin1 = nn.Linear(6272, 128).cuda()
+        self.action_head = nn.Linear(128, len(ACTIONS.smart_actions)).cuda()
+        self.value_head = nn.Linear(128, 1).cuda()
+        self.x = nn.Linear(128, 64).cuda()
+        self.y = nn.Linear(128, 64).cuda()
         self.saved_log_probs = []
         self.rewards = []
         self.saved_actions = []
@@ -63,12 +68,13 @@ class Policy(nn.Module):
         x_coord = x_probs.sample()
         y_coord = y_probs.sample()
         action = m.sample()
-        self.saved_actions.append([m.log_prob(action).data, state_value.data, x_probs.log_prob(x_coord).data, y_probs.log_prob(y_coord).data])
+        self.saved_actions.append([m.log_prob(action), state_value, x_probs.log_prob(x_coord), y_probs.log_prob(y_coord)])
         return action.data[0], x_coord, y_coord
 
     def forward(self, x):
-        x = convolution_layer(x, layer * num_layers)
-        x = self.mp(residual_layer(x, 256, 78))
+        x = F.relu(self.bn1(self.conv1(x)))
+        x = F.relu(self.bn2(self.conv2(x)))
+        x = F.relu(self.bn3(self.conv3(x)))
         x = F.relu(self.lin1(x.view(x.size(0), -1)))
         action_scores = self.action_head(x)
         state_values = self.value_head(x)
@@ -112,7 +118,7 @@ class RLAgent(base_agent.BaseAgent):
         self.policy = policy
         if USE_CUDA and torch.cuda.is_available():
             self.policy = self.policy.cuda()
-        self.optimizer = optim.Adam(self.policy.parameters(), lr=0.01)
+        self.optimizer = optim.Adam(self.policy.parameters(), lr=0.001)
 
         self.previous_action = None
         self.previous_state = None
@@ -245,6 +251,9 @@ class RLAgent(base_agent.BaseAgent):
 
                 smart_action = ACTIONS.smart_actions[rl_action]
                 self.actions.append(smart_action)
+
+                # line_new = '{:>20}  {:>4}  {:>4}'.format(smart_action, int(x), int(y))
+                # print(line_new)
 
                 if smart_action == ACTIONS.ACTION_BUILD_BARRACKS or smart_action == ACTIONS.ACTION_BUILD_SUPPLY_DEPOT:
                     unit_y, unit_x = (unit_type == UNITS.TERRAN_SCV).nonzero()
