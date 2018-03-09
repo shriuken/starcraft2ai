@@ -61,8 +61,8 @@ class Policy(nn.Module):
         self.lin1 = nn.Linear(6272, 128).cuda()
         self.action_head = nn.Linear(128, len(ACTIONS.smart_actions)).cuda()
         self.value_head = nn.Linear(128, 1).cuda()
-        self.x = nn.Linear(128, 64).cuda()
-        self.y = nn.Linear(128, 64).cuda()
+        self.x = nn.Linear(128, 84).cuda()
+        self.y = nn.Linear(128, 84).cuda()
         self.saved_log_probs = []
         self.rewards = []
         self.saved_actions = []
@@ -271,7 +271,7 @@ class RLAgent(base_agent.BaseAgent):
 
             if IS_RANDOM is False:
                 cur_state = np.array([
-                    np.pad(obs.observation['minimap'][5], [(0, 20), (0, 20)], mode='constant'),
+                    obs.observation['minimap'][5],
                     obs.observation['screen'][6],
                     np.resize(np.array(obs.observation['player'][1]), (84, 84)),
                     np.resize(np.array(obs.observation['player'][8]), (84, 84))
