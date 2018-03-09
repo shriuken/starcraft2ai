@@ -185,7 +185,7 @@ class RLAgent(base_agent.BaseAgent):
         self.step_num += 1
         self.time_scalar = 0.02 * log(pow(2, self.step_num))
         if obs.last():
-            reward = (obs.reward * 50) / self.time_scalar
+            reward = ((-1 * 50) / self.time_scalar) / 2 if obs.reward is 0 else (obs.reward * 50) / self.time_scalar
             self.policy.rewards = [x + reward for x in self.policy.rewards]
             self.policy.rewards.append(reward)
 
