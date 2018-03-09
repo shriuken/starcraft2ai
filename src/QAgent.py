@@ -19,13 +19,13 @@ from math import log
 DATA_FILE = 'sparse_agent_data'
 USE_CUDA = True
 IS_RANDOM = False
-resume = False
+resume = True
 resume_best = False
 evaluate = False
 
 SavedAction = namedtuple('SavedAction', ['log_prob', 'value', 'x', 'y'])
 layer = 4
-num_layers = 3
+num_layers = 5
 
 
 def convolution_layer(x, input_layers):
@@ -103,6 +103,7 @@ def finish_episode(model, optimizer, is_best, episode):
     saved_actions = model.saved_actions
     policy_losses = []
     value_losses = []
+    movement_losses = []
     rewards = []
     for r in model.rewards[::-1]:
         R = r + 0.99 * R
@@ -111,10 +112,11 @@ def finish_episode(model, optimizer, is_best, episode):
     rewards = (rewards - rewards.mean()) / (rewards.std() + np.finfo(np.float32).eps)
     for (log_prob, value, x_prob, y_prob), r in zip(saved_actions, rewards):
         reward = r - value.data[0]
-        policy_losses.append(-log_prob * Variable(reward) + -x_prob * Variable(reward) + -y_prob * Variable(reward))
+        policy_losses.append(-log_prob * Variable(reward))
+        movement_losses.append(-x_prob * Variable(reward) + -y_prob * Variable(reward))
         value_losses.append(F.smooth_l1_loss(value, Variable(torch.Tensor([r])).cuda()))
     optimizer.zero_grad()
-    loss = torch.stack(policy_losses).sum() + torch.stack(value_losses).sum()
+    loss = torch.stack(policy_losses).sum() + torch.stack(value_losses).sum() + torch.stack(movement_losses).sum()
     print(loss)
     loss.backward()
     optimizer.step()
@@ -136,7 +138,7 @@ class RLAgent(base_agent.BaseAgent):
         self.policy = policy
         if USE_CUDA and torch.cuda.is_available():
             self.policy = self.policy.cuda()
-        self.optimizer = optim.Adam(self.policy.parameters(), lr=0.001)
+        self.optimizer = optim.Adam(self.policy.parameters(), lr=0.002)
 
         self.previous_action = None
         self.previous_state = None
@@ -147,6 +149,7 @@ class RLAgent(base_agent.BaseAgent):
         self.lost = 0
         self.tied = 0
         self.step_num = 0
+        self.time_scalar = 0
         self.actions = []
         self.episode_rewards = []
         self.cc_y = None
@@ -173,16 +176,19 @@ class RLAgent(base_agent.BaseAgent):
     def reset(self):
         # self.qlearn.save_q_table()
         self.episodes += 1
+        self.step_num = 0
         print("Running episode: ", self.episodes)
         print("Won: ", self.won, " Lost: ", self.lost, "Tied: ", self.tied)
 
     def step(self, obs):
         super(RLAgent, self).step(obs)
         self.step_num += 1
+        self.time_scalar = 0.02 * log(pow(2, self.step_num))
         if obs.last():
-            reward = obs.reward * 25
-
+            reward = (obs.reward * 50) / self.time_scalar
+            self.policy.rewards = [x + reward for x in self.policy.rewards]
             self.policy.rewards.append(reward)
+
             # plt.plot(self.policy.rewards)
             # plt.show()
             self.previous_action = None
@@ -191,20 +197,20 @@ class RLAgent(base_agent.BaseAgent):
             self.move_number = 0
             if IS_RANDOM is False:
                 # Train our network.
-                print("Episode Reward: ", sum(self.policy.rewards))
+                print("Episode Reward: ", sum(self.policy.rewards), self.policy.rewards[0])
+                print("Time Scalar: ", self.time_scalar)
+                print("Steps: ", self.step_num)
                 # Keep track of the episode rewards.
                 self.episode_rewards.append(sum(self.policy.rewards))
                 plt.figure(figsize=(18.0, 12.0))
                 plt.plot(self.episode_rewards)
-                script_dir = os.path.dirname(__file__)
-                results_dir = os.path.join(script_dir, 'A2CResults/')
-                sample_file_name = str(self.episodes)
 
-                if not os.path.isdir(results_dir):
-                    os.makedirs(results_dir)
-
-                plt.savefig(results_dir + sample_file_name)
-                is_best = sum(self.episode_rewards) / len(self.episode_rewards) > sum(self.episode_rewards[:(len(self.episode_rewards)) - 1]) / len(self.episode_rewards) - 1
+                sample_file_name = "reward_graph"
+                plt.savefig(sample_file_name, overwrite=True)
+                if len(self.episode_rewards) > 1:
+                    is_best = sum(self.episode_rewards) / len(self.episode_rewards) > sum(self.episode_rewards[:(len(self.episode_rewards)) - 1]) / (len(self.episode_rewards) - 1)
+                else:
+                    is_best = False
                 if not evaluate:
                     finish_episode(self.policy, self.optimizer, is_best, self.episodes)
             if obs.reward > 0:
@@ -251,11 +257,11 @@ class RLAgent(base_agent.BaseAgent):
                 reward = 0
                 killed_unit_score = obs.observation['score_cumulative'][5]
                 killed_building_score = obs.observation['score_cumulative'][6]
-
-                if killed_building_score > self.previous_killed_building_score:
-                    reward += 1
-                if killed_unit_score > self.previous_killed_units_score:
-                    reward += 0.2
+                #
+                # if killed_building_score > self.previous_killed_building_score:
+                #     reward += 2
+                # if killed_unit_score > self.previous_killed_units_score:
+                #     reward += 1
 
                 self.policy.rewards.append(reward)
                 # finish_episode(self.policy, self.optimizer)
@@ -263,14 +269,14 @@ class RLAgent(base_agent.BaseAgent):
                 self.previous_killed_building_score = killed_building_score
                 self.previous_killed_units_score = killed_unit_score
 
-            cur_state = np.array([
-                np.pad(obs.observation['minimap'][5], [(0, 20), (0, 20)], mode='constant'),
-                obs.observation['screen'][6],
-                np.resize(np.array(obs.observation['player'][1]), (84, 84)),
-                np.resize(np.array(obs.observation['player'][8]), (84, 84))
-            ])
-
             if IS_RANDOM is False:
+                cur_state = np.array([
+                    np.pad(obs.observation['minimap'][5], [(0, 20), (0, 20)], mode='constant'),
+                    obs.observation['screen'][6],
+                    np.resize(np.array(obs.observation['player'][1]), (84, 84)),
+                    np.resize(np.array(obs.observation['player'][8]), (84, 84))
+                ])
+
                 if self.rl_input is None:
                     self.rl_input = cur_state
                     for _ in range(num_layers - 1):
