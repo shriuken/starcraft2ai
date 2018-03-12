@@ -61,8 +61,8 @@ class Policy(nn.Module):
         self.lin1 = nn.Linear(6272, 128).cuda()
         self.action_head = nn.Linear(128, len(ACTIONS.smart_actions)).cuda()
         self.value_head = nn.Linear(128, 1).cuda()
-        self.x = nn.Linear(128, 84).cuda()
-        self.y = nn.Linear(128, 84).cuda()
+        self.x = nn.Linear(128, 64).cuda()
+        self.y = nn.Linear(128, 64).cuda()
         self.saved_log_probs = []
         self.rewards = []
         self.saved_actions = []
@@ -138,13 +138,14 @@ class RLAgent(base_agent.BaseAgent):
         self.policy = policy
         if USE_CUDA and torch.cuda.is_available():
             self.policy = self.policy.cuda()
-        self.optimizer = optim.Adam(self.policy.parameters(), lr=0.002)
+        self.optimizer = optim.Adam(self.policy.parameters(), lr=0.007)
 
         self.previous_action = None
         self.previous_state = None
         self.previous_cumulative_score_total = 0
         self.previous_killed_building_score = 0
         self.previous_killed_units_score = 0
+        self.previous_build_unit_score = 0
         self.won = 0
         self.lost = 0
         self.tied = 0
@@ -183,10 +184,10 @@ class RLAgent(base_agent.BaseAgent):
     def step(self, obs):
         super(RLAgent, self).step(obs)
         self.step_num += 1
-        self.time_scalar = 0.02 * log(pow(2, self.step_num))
         if obs.last():
-            reward = ((-1 * 50) / self.time_scalar) / 2 if obs.reward is 0 else (obs.reward * 50) / self.time_scalar
-            self.policy.rewards = [x + reward for x in self.policy.rewards]
+            reward = obs.reward
+            # reward = (obs.reward / (3 * (log((self.step_num / 2501) * 3, 5)))) / 3 if obs.reward <= 0 else obs.reward / (3 * (log((self.step_num / 2501) * 3, 5)))
+            # self.policy.rewards = [x + reward for x in self.policy.rewards]
             self.policy.rewards.append(reward)
 
             # plt.plot(self.policy.rewards)
@@ -257,21 +258,23 @@ class RLAgent(base_agent.BaseAgent):
                 reward = 0
                 killed_unit_score = obs.observation['score_cumulative'][5]
                 killed_building_score = obs.observation['score_cumulative'][6]
+                built_unit_score = obs.observation['score_cumulative'][8]
                 #
                 # if killed_building_score > self.previous_killed_building_score:
-                #     reward += 2
+                #    reward += 1
                 # if killed_unit_score > self.previous_killed_units_score:
-                #     reward += 1
+                #    reward += 0.5
 
                 self.policy.rewards.append(reward)
                 # finish_episode(self.policy, self.optimizer)
                 self.previous_cumulative_score_total = obs.observation['score_cumulative'][0]
                 self.previous_killed_building_score = killed_building_score
                 self.previous_killed_units_score = killed_unit_score
+                self.previous_build_unit_score = built_unit_score
 
             if IS_RANDOM is False:
                 cur_state = np.array([
-                    obs.observation['minimap'][5],
+                    np.pad(obs.observation['minimap'][5], [(0, 20), (0, 20)], mode='constant'),
                     obs.observation['screen'][6],
                     np.resize(np.array(obs.observation['player'][1]), (84, 84)),
                     np.resize(np.array(obs.observation['player'][8]), (84, 84))
