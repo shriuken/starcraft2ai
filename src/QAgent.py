@@ -24,8 +24,8 @@ resume_best = False
 evaluate = False
 
 SavedAction = namedtuple('SavedAction', ['log_prob', 'value', 'x', 'y'])
-layer = 4
-num_layers = 15
+layer = 5
+num_layers = 12
 
 
 def convolution_layer(x, input_layers):
@@ -152,7 +152,7 @@ class RLAgent(base_agent.BaseAgent):
         self.policy = policy
         if USE_CUDA and torch.cuda.is_available():
             self.policy = self.policy.cuda()
-        self.optimizer = optim.Adam(self.policy.parameters(), lr=0.001)
+        self.optimizer = optim.Adam(self.policy.parameters(), lr=0.003)
 
         self.previous_action = None
         self.previous_state = None
@@ -199,7 +199,7 @@ class RLAgent(base_agent.BaseAgent):
         super(RLAgent, self).step(obs)
         self.step_num += 1
         if obs.last():
-            reward = obs.reward * 25
+            reward = obs.reward * 250
             # reward = (obs.reward / (3 * (log((self.step_num / 2501) * 3, 5)))) / 3 if obs.reward <= 0 else obs.reward / (3 * (log((self.step_num / 2501) * 3, 5)))
             # self.policy.rewards = [x + reward for x in self.policy.rewards]
             self.policy.rewards.append(reward)
@@ -271,8 +271,8 @@ class RLAgent(base_agent.BaseAgent):
             # enemy_y, enemy_x = (obs.observation['minimap'][MISC.PLAYER_RELATIVE] == MISC.PLAYER_HOSTILE).nonzero()
 
             if self.previous_action is not None:
-                # reward = obs.observation['score_cumulative'][0] - self.previous_cumulative_score_total
-                reward = 0
+                reward = obs.observation['score_cumulative'][0] - self.previous_cumulative_score_total
+                # reward = 0
                 killed_unit_score = obs.observation['score_cumulative'][5]
                 killed_building_score = obs.observation['score_cumulative'][6]
                 built_unit_score = obs.observation['score_cumulative'][8]
@@ -293,6 +293,7 @@ class RLAgent(base_agent.BaseAgent):
                     obs.observation['minimap'][5],
                     obs.observation['screen'][6],
                     np.resize(np.array(obs.observation['player'][1]), (64, 64)),
+                    np.resize(np.array(obs.observation['player'][2]), (64, 64)),
                     np.resize(np.array(obs.observation['player'][8]), (64, 64))
                 ])
 
@@ -312,6 +313,7 @@ class RLAgent(base_agent.BaseAgent):
                     rl_action, x, y = self.policy.select_action(self.rl_input)
                     self.rl_input = np.delete(self.rl_input, np.s_[0:layer], axis=0)
 
+
                 self.previous_state = current_state
                 self.previous_action = rl_action
                 self.prev_x = x
@@ -323,7 +325,7 @@ class RLAgent(base_agent.BaseAgent):
                 # line_new = '{:>20}  {:>4}  {:>4}'.format(smart_action, int(x), int(y))
                 # print(line_new)
 
-                if smart_action == ACTIONS.ACTION_BUILD_BARRACKS or smart_action == ACTIONS.ACTION_BUILD_SUPPLY_DEPOT:
+                if smart_action == ACTIONS.ACTION_BUILD_BARRACKS or smart_action == ACTIONS.ACTION_BUILD_SUPPLY_DEPOT or smart_action == ACTIONS.ACTION_BUILD_REFINERY or smart_action == ACTIONS.ACTION_MINE_VESPENE:
                     unit_y, unit_x = (unit_type == UNITS.TERRAN_SCV).nonzero()
 
                     if unit_y.any():
@@ -332,7 +334,35 @@ class RLAgent(base_agent.BaseAgent):
 
                         return actions.FunctionCall(ACTIONS.SELECT_POINT, [MISC.NOT_QUEUED, target])
 
-                elif smart_action == ACTIONS.ACTION_BUILD_MARINE:
+                elif smart_action == ACTIONS.ACTION_BUILD_TECH_LAB:
+                    unit_y, unit_x = (unit_type == UNITS.TERRAN_BARRACKS).nonzero()
+                    unit_y_fly, unit_x_fly = (unit_type == UNITS.TERRAN_BARRACKS).nonzero()
+                    if unit_y_fly.any():
+                        i = random.randint(0, len(unit_y) - 1)
+
+                        m_x = unit_x_fly[i]
+                        m_y = unit_y_fly[i]
+
+                        target = [m_x, m_y]
+
+                        return actions.FunctionCall(ACTIONS.SELECT_POINT, [MISC.NOT_QUEUED, target])
+                    if unit_y.any():
+                        i = random.randint(0, len(unit_y) - 1)
+
+                        m_x = unit_x[i]
+                        m_y = unit_y[i]
+
+                        target = [m_x, m_y]
+
+                        return actions.FunctionCall(ACTIONS.SELECT_POINT, [MISC.NOT_QUEUED, target])
+
+                elif smart_action == ACTIONS.ACTION_BUILD_SCV:
+                    if cc_y.any():
+                        target = [cc_x[0], cc_y[0]]
+
+                        return actions.FunctionCall(ACTIONS.SELECT_POINT, [MISC.NOT_QUEUED, target])
+
+                elif smart_action == ACTIONS.ACTION_BUILD_MARINE or smart_action == ACTIONS.ACTION_BUILD_MAURADER:
                     if barracks_y.any():
                         i = random.randint(0, len(barracks_y) - 1)
                         target = [barracks_x[i], barracks_y[i]]
@@ -350,6 +380,19 @@ class RLAgent(base_agent.BaseAgent):
             x = self.prev_x
             y = self.prev_y
 
+            if smart_action == ACTIONS.ACTION_MINE_VESPENE:
+                unit_y, unit_x = (unit_type == UNITS.TERRAN_REFINERY).nonzero()
+
+                if unit_y.any() and ACTIONS.SMART_SCREEN in obs.observation['available_actions']:
+                    i = random.randint(0, len(unit_y) - 1)
+
+                    m_x = unit_x[i]
+                    m_y = unit_y[i]
+
+                    target = [int(m_x), int(m_y)]
+
+                    return actions.FunctionCall(ACTIONS.SMART_SCREEN, [MISC.QUEUED, target])
+
             if smart_action == ACTIONS.ACTION_BUILD_SUPPLY_DEPOT:
                 if ACTIONS.BUILD_SUPPLY_DEPOT in obs.observation['available_actions']:
                     if cc_y.any():
@@ -364,9 +407,37 @@ class RLAgent(base_agent.BaseAgent):
 
                         return actions.FunctionCall(ACTIONS.BUILD_BARRACKS, [MISC.NOT_QUEUED, target])
 
+            elif smart_action == ACTIONS.ACTION_BUILD_REFINERY:
+                if ACTIONS.BUILD_REFINERY in obs.observation['available_actions']:
+                    unit_y, unit_x = (unit_type == UNITS.NEUTRAL_VESPENE_MINE).nonzero()
+                    if unit_y.any():
+                        i = random.randint(0, len(unit_y) - 1)
+
+                        m_x = unit_x[i]
+                        m_y = unit_y[i]
+
+                        target = [m_x, m_y]
+
+                        return actions.FunctionCall(ACTIONS.BUILD_REFINERY, [MISC.NOT_QUEUED, target])
+
+            elif smart_action == ACTIONS.ACTION_BUILD_TECH_LAB:
+                if ACTIONS.BUILD_TECH_LAB in obs.observation['available_actions']:
+                    target = [int(x), int(y)]
+                    return actions.FunctionCall(ACTIONS.BUILD_TECH_LAB, [MISC.NOT_QUEUED, target])
+
+            elif smart_action == ACTIONS.ACTION_BUILD_SCV:
+                if ACTIONS.TRAIN_SCV in obs.observation['available_actions']:
+                    return actions.FunctionCall(ACTIONS.TRAIN_SCV, [MISC.QUEUED])
+
             elif smart_action == ACTIONS.ACTION_BUILD_MARINE:
                 if ACTIONS.TRAIN_MARINE in obs.observation['available_actions']:
                     return actions.FunctionCall(ACTIONS.TRAIN_MARINE, [MISC.QUEUED])
+
+            # It isn't available because we aren't building a tech lab on a barracks... lol
+            # this is annoying QQ.
+            elif smart_action == ACTIONS.ACTION_BUILD_MAURADER:
+                if ACTIONS.TRAIN_MAURAUDER in obs.observation['available_actions']:
+                    return actions.FunctionCall(ACTIONS.TRAIN_MAURAUDER, [MISC.QUEUED])
 
             elif smart_action == ACTIONS.ACTION_ATTACK:
                 do_it = True
@@ -391,7 +462,7 @@ class RLAgent(base_agent.BaseAgent):
             x = self.prev_x
             y = self.prev_y
 
-            if smart_action == ACTIONS.ACTION_BUILD_BARRACKS or smart_action == ACTIONS.ACTION_BUILD_SUPPLY_DEPOT:
+            if smart_action == ACTIONS.ACTION_BUILD_BARRACKS or smart_action == ACTIONS.ACTION_BUILD_SUPPLY_DEPOT or smart_action == ACTIONS.ACTION_BUILD_REFINERY:
                 if ACTIONS.HARVEST_GATHER in obs.observation['available_actions']:
                     unit_y, unit_x = (unit_type == UNITS.NEUTRAL_MINERAL_FIELD).nonzero()
 
@@ -404,5 +475,6 @@ class RLAgent(base_agent.BaseAgent):
                         target = [int(m_x), int(m_y)]
 
                         return actions.FunctionCall(ACTIONS.HARVEST_GATHER, [MISC.QUEUED, target])
+
 
         return actions.FunctionCall(ACTIONS.NO_OP, [])
