@@ -35,7 +35,7 @@ from absl import flags
 
 FLAGS = flags.FLAGS
 flags.DEFINE_bool("render", True, "Whether to render with pygame.")
-flags.DEFINE_integer("screen_resolution", 84,
+flags.DEFINE_integer("screen_resolution", 64,
                      "Resolution for screen feature layers.")
 flags.DEFINE_integer("minimap_resolution", 64,
                      "Resolution for minimap feature layers.")

@@ -25,7 +25,7 @@ evaluate = False
 
 SavedAction = namedtuple('SavedAction', ['log_prob', 'value', 'x', 'y'])
 layer = 4
-num_layers = 5
+num_layers = 15
 
 
 def convolution_layer(x, input_layers):
@@ -34,7 +34,7 @@ def convolution_layer(x, input_layers):
     return F.relu(bn1(conv1(x)))
 
 
-def residual_layer(x, input_layers, layer_size):
+def residual_layer(x, input_layers):
     conv1 = nn.Conv2d(input_layers, 256, kernel_size=3, stride=1).cuda()
     bn1 = nn.BatchNorm2d(256).cuda()
     conv2 = nn.Conv2d(256, 256, kernel_size=3, stride=1).cuda()
@@ -51,18 +51,22 @@ def save_checkpoint(state, is_best, filename='checkpoint.pth.tar'):
 class Policy(nn.Module):
     def __init__(self):
         super(Policy, self).__init__()
-        self.conv1 = nn.Conv2d(layer * num_layers, 84, kernel_size=5, stride=2).cuda()
-        self.bn1 = nn.BatchNorm2d(84).cuda()
-        self.conv2 = nn.Conv2d(84, 128, kernel_size=5, stride=2).cuda()
-        self.bn2 = nn.BatchNorm2d(128).cuda()
-        self.conv3 = nn.Conv2d(128, 128, kernel_size=5, stride=2).cuda()
-        self.bn3 = nn.BatchNorm2d(128).cuda()
+        self.net_size = 112
+        self.in_conv = nn.Conv2d(layer * num_layers, 64, kernel_size=3, stride=2).cuda()
+        self.in_bn = nn.BatchNorm2d(64).cuda()
+        self.in_large_conv = nn.Conv2d(64, self.net_size, kernel_size=3, stride=1).cuda()
+        self.large_conv = nn.Conv2d(self.net_size, self.net_size, kernel_size=5, stride=1).cuda()
+        self.bn = nn.BatchNorm2d(self.net_size).cuda()
+        self.med_conv = nn.Conv2d(self.net_size, self.net_size, kernel_size=4, stride=1).cuda()
+        self.small_conv = nn.Conv2d(self.net_size, self.net_size, kernel_size=3, stride=1).cuda()
+        self.tiny_conv = nn.Conv2d(self.net_size, self.net_size, kernel_size=2, stride=1).cuda()
+        self.mp = nn.MaxPool2d(3)
 
-        self.lin1 = nn.Linear(6272, 128).cuda()
-        self.action_head = nn.Linear(128, len(ACTIONS.smart_actions)).cuda()
-        self.value_head = nn.Linear(128, 1).cuda()
-        self.x = nn.Linear(128, 64).cuda()
-        self.y = nn.Linear(128, 64).cuda()
+        self.lin1 = nn.Linear(3 * 3 * self.net_size, 64).cuda()
+        self.action_head = nn.Linear(64, len(ACTIONS.smart_actions)).cuda()
+        self.value_head = nn.Linear(64, 1).cuda()
+        self.x = nn.Linear(64, 64).cuda()
+        self.y = nn.Linear(64, 64).cuda()
         self.saved_log_probs = []
         self.rewards = []
         self.saved_actions = []
@@ -85,9 +89,19 @@ class Policy(nn.Module):
         return action.data[0], x_coord, y_coord
 
     def forward(self, x):
-        x = F.relu(self.bn1(self.conv1(x)))
-        x = F.relu(self.bn2(self.conv2(x)))
-        x = F.relu(self.bn3(self.conv3(x)))
+        x = F.relu(self.in_bn(self.in_conv(x)))
+        x = F.relu(self.bn(self.in_large_conv(x)))
+        x = F.relu(self.bn(self.small_conv(x)))
+        x = F.relu(self.bn(self.small_conv(x)))
+        x = F.relu(self.bn(self.small_conv(x)))
+        x = F.relu(self.bn(self.small_conv(x)))
+        x = F.relu(self.bn(self.small_conv(x)))
+        x = F.relu(self.bn(self.small_conv(x)))
+        x = F.relu(self.bn(self.small_conv(x)))
+        x = F.relu(self.bn(self.small_conv(x)))
+        x = F.relu(self.bn(self.small_conv(x)))
+        x = F.relu(self.bn(self.small_conv(x)))
+        x = F.relu(self.mp(x))
         x = F.relu(self.lin1(x.view(x.size(0), -1)))
         action_scores = self.action_head(x)
         state_values = self.value_head(x)
@@ -138,7 +152,7 @@ class RLAgent(base_agent.BaseAgent):
         self.policy = policy
         if USE_CUDA and torch.cuda.is_available():
             self.policy = self.policy.cuda()
-        self.optimizer = optim.Adam(self.policy.parameters(), lr=0.007)
+        self.optimizer = optim.Adam(self.policy.parameters(), lr=0.001)
 
         self.previous_action = None
         self.previous_state = None
@@ -185,7 +199,7 @@ class RLAgent(base_agent.BaseAgent):
         super(RLAgent, self).step(obs)
         self.step_num += 1
         if obs.last():
-            reward = obs.reward
+            reward = obs.reward * 25
             # reward = (obs.reward / (3 * (log((self.step_num / 2501) * 3, 5)))) / 3 if obs.reward <= 0 else obs.reward / (3 * (log((self.step_num / 2501) * 3, 5)))
             # self.policy.rewards = [x + reward for x in self.policy.rewards]
             self.policy.rewards.append(reward)
@@ -202,8 +216,11 @@ class RLAgent(base_agent.BaseAgent):
                 print("Time Scalar: ", self.time_scalar)
                 print("Steps: ", self.step_num)
                 # Keep track of the episode rewards.
-                self.episode_rewards.append(sum(self.policy.rewards))
+                self.episode_rewards.append(sum(self.policy.rewards)/len(self.policy.rewards))
                 plt.figure(figsize=(18.0, 12.0))
+                plt.title("Average Reward over time")
+                plt.ylabel("Average Reward")
+                plt.xlabel("Episode")
                 plt.plot(self.episode_rewards)
 
                 sample_file_name = "reward_graph"
@@ -259,14 +276,13 @@ class RLAgent(base_agent.BaseAgent):
                 killed_unit_score = obs.observation['score_cumulative'][5]
                 killed_building_score = obs.observation['score_cumulative'][6]
                 built_unit_score = obs.observation['score_cumulative'][8]
-                #
-                # if killed_building_score > self.previous_killed_building_score:
-                #    reward += 1
-                # if killed_unit_score > self.previous_killed_units_score:
-                #    reward += 0.5
+                # #
+                if killed_building_score > self.previous_killed_building_score:
+                    reward += 1
+                if killed_unit_score > self.previous_killed_units_score:
+                    reward += 0.1
 
                 self.policy.rewards.append(reward)
-                # finish_episode(self.policy, self.optimizer)
                 self.previous_cumulative_score_total = obs.observation['score_cumulative'][0]
                 self.previous_killed_building_score = killed_building_score
                 self.previous_killed_units_score = killed_unit_score
@@ -274,10 +290,10 @@ class RLAgent(base_agent.BaseAgent):
 
             if IS_RANDOM is False:
                 cur_state = np.array([
-                    np.pad(obs.observation['minimap'][5], [(0, 20), (0, 20)], mode='constant'),
+                    obs.observation['minimap'][5],
                     obs.observation['screen'][6],
-                    np.resize(np.array(obs.observation['player'][1]), (84, 84)),
-                    np.resize(np.array(obs.observation['player'][8]), (84, 84))
+                    np.resize(np.array(obs.observation['player'][1]), (64, 64)),
+                    np.resize(np.array(obs.observation['player'][8]), (64, 64))
                 ])
 
                 if self.rl_input is None:
@@ -287,7 +303,7 @@ class RLAgent(base_agent.BaseAgent):
                 else:
                     self.rl_input = np.concatenate((self.rl_input, cur_state))
 
-            if IS_RANDOM or self.rl_input.shape == (layer * num_layers, 84, 84):
+            if IS_RANDOM or self.rl_input.shape == (layer * num_layers, 64, 64):
                 if IS_RANDOM:
                     rl_action = randrange(0, len(ACTIONS.smart_actions))
                     x = randrange(0, 64)
