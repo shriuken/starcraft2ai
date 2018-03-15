@@ -19,13 +19,13 @@ from math import log
 DATA_FILE = 'sparse_agent_data'
 USE_CUDA = True
 IS_RANDOM = False
-resume = True
+resume = False
 resume_best = False
 evaluate = False
 
 SavedAction = namedtuple('SavedAction', ['log_prob', 'value', 'x', 'y'])
 layer = 5
-num_layers = 12
+num_layers = 2
 
 
 def convolution_layer(x, input_layers):
@@ -52,6 +52,8 @@ class Policy(nn.Module):
     def __init__(self):
         super(Policy, self).__init__()
         self.net_size = 112
+        self.hidden = self.init_hidden()
+        self.embedding_dim = self.net_size
         self.in_conv = nn.Conv2d(layer * num_layers, 64, kernel_size=3, stride=2).cuda()
         self.in_bn = nn.BatchNorm2d(64).cuda()
         self.in_large_conv = nn.Conv2d(64, self.net_size, kernel_size=3, stride=1).cuda()
@@ -63,14 +65,19 @@ class Policy(nn.Module):
         self.mp = nn.MaxPool2d(3)
 
         self.lin1 = nn.Linear(3 * 3 * self.net_size, 64).cuda()
+
+        self.lstm = nn.LSTM(64, 64).cuda()
         self.action_head = nn.Linear(64, len(ACTIONS.smart_actions)).cuda()
         self.value_head = nn.Linear(64, 1).cuda()
         self.x = nn.Linear(64, 64).cuda()
         self.y = nn.Linear(64, 64).cuda()
-        self.saved_log_probs = []
         self.rewards = []
         self.saved_actions = []
         self.updated = 0
+
+    def init_hidden(self):
+        return (torch.autograd.Variable(torch.randn(1, 1, 64)).cuda(),
+                torch.autograd.Variable(torch.randn((1, 1, 64))).cuda())
 
     def select_action(self, state):
         state = torch.from_numpy(state).float().unsqueeze(0)
@@ -85,7 +92,8 @@ class Policy(nn.Module):
         y_coord = y_probs.sample()
         action = m.sample()
         if not evaluate:
-            self.saved_actions.append([m.log_prob(action), state_value, x_probs.log_prob(x_coord), y_probs.log_prob(y_coord)])
+            self.saved_actions.append(
+                [m.log_prob(action), state_value, x_probs.log_prob(x_coord), y_probs.log_prob(y_coord)])
         return action.data[0], x_coord, y_coord
 
     def forward(self, x):
@@ -103,6 +111,9 @@ class Policy(nn.Module):
         x = F.relu(self.bn(self.small_conv(x)))
         x = F.relu(self.mp(x))
         x = F.relu(self.lin1(x.view(x.size(0), -1)))
+        x = x.unsqueeze(0)
+        x, self.hidden = self.lstm(x, self.hidden)
+        x = x.squeeze(0)
         action_scores = self.action_head(x)
         state_values = self.value_head(x)
         x_coord = self.x(x)
@@ -134,13 +145,14 @@ def finish_episode(model, optimizer, is_best, episode):
     print(loss)
     loss.backward()
     optimizer.step()
+    del model.rewards[:]
+    del model.saved_actions[:]
+    model.hidden = model.init_hidden()
     save_checkpoint({
         'epoch': episode + 1,
         'state_dict': model.state_dict(),
         'optimizer': optimizer.state_dict(),
     }, is_best)
-    del model.rewards[:]
-    del model.saved_actions[:]
 
 
 policy = Policy()
@@ -152,7 +164,7 @@ class RLAgent(base_agent.BaseAgent):
         self.policy = policy
         if USE_CUDA and torch.cuda.is_available():
             self.policy = self.policy.cuda()
-        self.optimizer = optim.Adam(self.policy.parameters(), lr=0.003)
+        self.optimizer = optim.Adam(self.policy.parameters(), lr=0.002)
 
         self.previous_action = None
         self.previous_state = None
@@ -216,7 +228,7 @@ class RLAgent(base_agent.BaseAgent):
                 print("Time Scalar: ", self.time_scalar)
                 print("Steps: ", self.step_num)
                 # Keep track of the episode rewards.
-                self.episode_rewards.append(sum(self.policy.rewards)/len(self.policy.rewards))
+                self.episode_rewards.append(sum(self.policy.rewards) / len(self.policy.rewards))
                 plt.figure(figsize=(18.0, 12.0))
                 plt.title("Average Reward over time")
                 plt.ylabel("Average Reward")
@@ -226,7 +238,8 @@ class RLAgent(base_agent.BaseAgent):
                 sample_file_name = "reward_graph"
                 plt.savefig(sample_file_name, overwrite=True)
                 if len(self.episode_rewards) > 1:
-                    is_best = sum(self.episode_rewards) / len(self.episode_rewards) > sum(self.episode_rewards[:(len(self.episode_rewards)) - 1]) / (len(self.episode_rewards) - 1)
+                    is_best = sum(self.episode_rewards) / len(self.episode_rewards) > sum(
+                        self.episode_rewards[:(len(self.episode_rewards)) - 1]) / (len(self.episode_rewards) - 1)
                 else:
                     is_best = False
                 if not evaluate:
@@ -253,10 +266,10 @@ class RLAgent(base_agent.BaseAgent):
         cc_count = 1 if cc_y.any() else 0
 
         depot_y, depot_x = (unit_type == UNITS.TERRAN_SUPPLY_DEPOT).nonzero()
-        supply_depot_count = int(round(len(depot_y) / 69))
+        supply_depot_count = int(len(depot_y) / 37)
 
         barracks_y, barracks_x = (unit_type == UNITS.TERRAN_BARRACKS).nonzero()
-        barracks_count = int(round(len(barracks_y) / 137))
+        barracks_count = int(len(barracks_y) / 80)
 
         if self.move_number == 0:
             self.move_number += 1
@@ -271,8 +284,8 @@ class RLAgent(base_agent.BaseAgent):
             # enemy_y, enemy_x = (obs.observation['minimap'][MISC.PLAYER_RELATIVE] == MISC.PLAYER_HOSTILE).nonzero()
 
             if self.previous_action is not None:
-                reward = obs.observation['score_cumulative'][0] - self.previous_cumulative_score_total
-                # reward = 0
+                # reward = obs.observation['score_cumulative'][0] - self.previous_cumulative_score_total
+                reward = 0
                 killed_unit_score = obs.observation['score_cumulative'][5]
                 killed_building_score = obs.observation['score_cumulative'][6]
                 built_unit_score = obs.observation['score_cumulative'][8]
@@ -280,7 +293,7 @@ class RLAgent(base_agent.BaseAgent):
                 if killed_building_score > self.previous_killed_building_score:
                     reward += 1
                 if killed_unit_score > self.previous_killed_units_score:
-                    reward += 0.1
+                    reward += .1
 
                 self.policy.rewards.append(reward)
                 self.previous_cumulative_score_total = obs.observation['score_cumulative'][0]
@@ -312,7 +325,6 @@ class RLAgent(base_agent.BaseAgent):
                 else:
                     rl_action, x, y = self.policy.select_action(self.rl_input)
                     self.rl_input = np.delete(self.rl_input, np.s_[0:layer], axis=0)
-
 
                 self.previous_state = current_state
                 self.previous_action = rl_action
@@ -357,8 +369,9 @@ class RLAgent(base_agent.BaseAgent):
                         return actions.FunctionCall(ACTIONS.SELECT_POINT, [MISC.NOT_QUEUED, target])
 
                 elif smart_action == ACTIONS.ACTION_BUILD_SCV:
-                    if cc_y.any():
-                        target = [cc_x[0], cc_y[0]]
+                    if cc_y.any() and obs.observation['player'][6] < 30:
+                        cc_x[int(len(cc_x) / 2)]
+                        target = [cc_x[int(len(cc_x) / 2)], cc_y[int(len(cc_y) / 2)]]
 
                         return actions.FunctionCall(ACTIONS.SELECT_POINT, [MISC.NOT_QUEUED, target])
 
@@ -394,7 +407,7 @@ class RLAgent(base_agent.BaseAgent):
                     return actions.FunctionCall(ACTIONS.SMART_SCREEN, [MISC.QUEUED, target])
 
             if smart_action == ACTIONS.ACTION_BUILD_SUPPLY_DEPOT:
-                if ACTIONS.BUILD_SUPPLY_DEPOT in obs.observation['available_actions']:
+                if supply_depot_count < 8 and ACTIONS.BUILD_SUPPLY_DEPOT in obs.observation['available_actions']:
                     if cc_y.any():
                         target = [int(x), int(y)]
 
@@ -475,6 +488,5 @@ class RLAgent(base_agent.BaseAgent):
                         target = [int(m_x), int(m_y)]
 
                         return actions.FunctionCall(ACTIONS.HARVEST_GATHER, [MISC.QUEUED, target])
-
 
         return actions.FunctionCall(ACTIONS.NO_OP, [])
