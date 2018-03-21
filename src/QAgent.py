@@ -347,17 +347,17 @@ class RLAgent(base_agent.BaseAgent):
 
             if IS_RANDOM is False:
                 screen_state = np.array([
-                    obs.observation['screen'][2],
-                    obs.observation['screen'][5],
-                    obs.observation['screen'][7],
-                    obs.observation['screen'][8]
+                    obs.observation['screen'][2], # creep
+                    obs.observation['screen'][5], # player_relative [0-4][background, self, ally, neutral, enemy] 
+                    obs.observation['screen'][7], # selected
+                    obs.observation['screen'][8] # hit points
                 ])
                 minimap_state = np.array([
-                    obs.observation['minimap'][0],
-                    obs.observation['minimap'][1],
-                    obs.observation['minimap'][2],
-                    obs.observation['minimap'][5],
-                    obs.observation['minimap'][6]
+                    obs.observation['minimap'][0], # height map
+                    obs.observation['minimap'][1], # visibility
+                    obs.observation['minimap'][2], # creep
+                    obs.observation['minimap'][5], # player_relative [0-4][background, self, ally, neutral, enemy] 
+                    obs.observation['minimap'][6] # selected
                 ])
                 other_state = np.array([
                     np.resize(np.array(obs.observation['player'][1]), (64, 64)),
