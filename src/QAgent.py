@@ -4,6 +4,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 import os
 import shutil
+import math
 
 import matplotlib.pyplot as plt
 
@@ -14,7 +15,7 @@ from pysc2.agents import base_agent
 from actions.actions import *
 from pysc2.lib import actions
 from random import randrange
-from math import log
+
 
 DATA_FILE = 'sparse_agent_data'
 USE_CUDA = True
@@ -51,91 +52,106 @@ def save_checkpoint(state, is_best, filename='checkpoint.pth.tar'):
 class Policy(nn.Module):
     def __init__(self):
         super(Policy, self).__init__()
-        self.net_size = 32
+        self.net_size = 10
+        self.input_size = 32
         self.hidden = self.init_hidden()
-        self.hidden2 = self.init_hidden()
+        self.coord_hidden = self.init_coord_hidden()
         self.embedding_dim = self.net_size
-        self.in_conv_mini = nn.Conv2d(5, 64, kernel_size=3, stride=2).cuda()
-        self.in_conv_screen = nn.Conv2d(4, 64, kernel_size=3, stride=2).cuda()
-        self.in_conv_other = nn.Conv2d(3, 64, kernel_size=3, stride=2).cuda()
-        self.in_bn = nn.BatchNorm2d(64).cuda()
-        self.in_large_conv = nn.Conv2d(64, self.net_size, kernel_size=5, stride=1).cuda()
-        self.large_conv = nn.Conv2d(self.net_size, self.net_size, kernel_size=5, stride=1).cuda()
-        self.bn = nn.BatchNorm2d(self.net_size).cuda()
-        self.bn_conv = nn.BatchNorm2d(19).cuda()
-        self.cat_conv = nn.Conv2d(96, 19, kernel_size=3, stride=1).cuda()
-        self.small_conv_cat = nn.Conv2d(19, 19, kernel_size=3, stride=1).cuda()
-        self.small_conv = nn.Conv2d(self.net_size, self.net_size, kernel_size=3, stride=1).cuda()
-        self.mp = nn.MaxPool2d(3)
-        self.lstm = nn.LSTM(475, 512).cuda()
-        self.lin1 = nn.Linear(512, 64).cuda()
+
+        self.in_conv_mini = nn.Conv2d(5, self.input_size, kernel_size=3, stride=1).cuda()
+        self.in_conv_screen = nn.Conv2d(4, self.input_size, kernel_size=3, stride=1).cuda()
+        self.in_conv_other = nn.Conv2d(3, self.input_size, kernel_size=3, stride=1).cuda()
+
+        self.in_bn_mini = nn.BatchNorm2d(self.input_size).cuda()
+        self.in_bn_screen = nn.BatchNorm2d(self.input_size).cuda()
+        self.in_bn_other = nn.BatchNorm2d(self.input_size).cuda()
+
+        self.in_large_conv_sc = nn.Conv2d(self.input_size, self.net_size, kernel_size=6, stride=1).cuda()
+        self.in_large_conv_mini = nn.Conv2d(self.input_size, self.net_size, kernel_size=6, stride=1).cuda()
+        self.in_large_conv_other = nn.Conv2d(self.input_size, self.net_size, kernel_size=6, stride=1).cuda()
+
+        self.bn_mini = nn.BatchNorm2d(self.net_size).cuda()
+        self.bn_screen = nn.BatchNorm2d(self.net_size).cuda()
+        self.bn_other = nn.BatchNorm2d(self.net_size).cuda()
+
+        self.bn_out = nn.BatchNorm2d(1).cuda()
+        self.bn_conv = nn.BatchNorm2d(self.net_size).cuda()
+        self.bn_small_conv = nn.BatchNorm2d(self.net_size).cuda()
+        self.cat_conv = nn.Conv2d(self.input_size * 3, self.net_size, kernel_size=3).cuda()
+
+        self.small_conv_cat = nn.Conv2d(self.net_size, self.net_size, kernel_size=3).cuda()
+        self.small_conv = nn.Conv2d(self.net_size, self.net_size, kernel_size=3).cuda()
+
+        self.max_pool_out = nn.MaxPool2d(3)
+
+        self.out_conv = nn.Conv2d(self.net_size, 1, kernel_size=(26, 1)).cuda()
+
+        self.coord_conv = nn.Conv2d(self.input_size * 3, 1, kernel_size=(30, 1)).cuda()
+
+        self.lstm = nn.LSTM(26, 64).cuda()
+        self.coord_lstm = nn.LSTM(30, self.input_size * self.input_size).cuda()
+
+        self.lin1 = nn.Linear(64, 128).cuda()
+        self.lin2 = nn.Linear(128, 128).cuda()
+        self.lin3 = nn.Linear(128, 64).cuda()
+
         self.action_head = nn.Linear(64, len(ACTIONS.smart_actions)).cuda()
         self.value_head = nn.Linear(64, 1).cuda()
-        self.x = nn.Linear(64, 64).cuda()
-        self.y = nn.Linear(64, 64).cuda()
         self.rewards = []
         self.saved_actions = []
         self.updated = 0
 
     def init_hidden(self):
-        return (torch.autograd.Variable(torch.randn(1, 1, 512)).cuda(),
-                torch.autograd.Variable(torch.randn((1, 1, 512))).cuda())
+        return (torch.autograd.Variable(torch.randn(1, 1, 64)).cuda(),
+                torch.autograd.Variable(torch.randn((1, 1, 64))).cuda())
+
+    def init_coord_hidden(self):
+        return (torch.autograd.Variable(torch.randn(1, 1, self.input_size*self.input_size)).cuda(),
+                torch.autograd.Variable(torch.randn((1, 1, self.input_size*self.input_size))).cuda())
 
     def select_action(self, minimap, screen, other_features):
         minimap = torch.from_numpy(minimap).float().unsqueeze(0)
         screen = torch.from_numpy(screen).float().unsqueeze(0)
         other_features = torch.from_numpy(other_features).float().unsqueeze(0)
         if USE_CUDA and torch.cuda.is_available():
-            probs, state_value, x, y = self.forward(Variable(minimap).cuda(), Variable(screen).cuda(), Variable(other_features).cuda())
+            probs, state_value, coords = self.forward(Variable(minimap, volatile=evaluate).cuda(), Variable(screen, volatile=evaluate).cuda(), Variable(other_features, volatile=evaluate).cuda())
         else:
-            probs, state_value, x, y = self.forward(Variable(minimap), Variable(screen), Variable(other_features))
+            probs, state_value, coords = self.forward(Variable(minimap, volatile=evaluate), Variable(screen, volatile=evaluate), Variable(other_features, volatile=evaluate))
         m = Categorical(probs)
-        x_probs = Categorical(x)
-        y_probs = Categorical(y)
-        x_coord = x_probs.sample()
-        y_coord = y_probs.sample()
+        coord_prob = Categorical(coords)
+        coord_sample = coord_prob.sample()
+        x_coord = coord_sample % self.input_size
+        y_coord = math.floor(coord_sample / self.input_size)
         action = m.sample()
         if not evaluate:
             self.saved_actions.append(
-                [m.log_prob(action), state_value, x_probs.log_prob(x_coord), y_probs.log_prob(y_coord)])
+                [m.log_prob(Variable(action.data)), Variable(state_value.data), coord_prob.log_prob(Variable(coord_sample.data))])
         return action.data[0], x_coord, y_coord
 
     def forward(self, minimap, screen, other_features):
-        minimap = F.relu(self.in_bn(self.in_conv_mini(minimap)))
-        minimap = F.relu(self.bn(self.in_large_conv(minimap)))
-        minimap = F.relu((self.bn(self.large_conv(minimap))))
-        minimap = F.relu((self.bn(self.small_conv(minimap))))
-        minimap = F.relu((self.bn(self.small_conv(minimap))))
+        minimap = F.relu(self.in_bn_mini(self.in_conv_mini(minimap)))
 
-        screen = F.relu(self.in_bn(self.in_conv_screen(screen)))
-        screen = F.relu(self.bn(self.in_large_conv(screen)))
-        screen = F.relu((self.bn(self.large_conv(screen))))
-        screen = F.relu((self.bn(self.small_conv(screen))))
-        screen = F.relu((self.bn(self.small_conv(screen))))
+        screen = F.relu(self.in_bn_screen(self.in_conv_screen(screen)))
 
-        other_features = F.relu(self.in_bn(self.in_conv_other(other_features)))
-        other_features = F.relu(self.bn(self.in_large_conv(other_features)))
-        other_features = F.relu((self.bn(self.large_conv(other_features))))
-        other_features = F.relu((self.bn(self.small_conv(other_features))))
-        other_features = F.relu((self.bn(self.small_conv(other_features))))
+        other_features = F.relu(self.in_bn_other(self.in_conv_other(other_features)))
 
         x = torch.cat((minimap, screen, other_features), dim=1)
+        coords_out = F.relu(self.bn_out(self.coord_conv(x)))
+        coords, self.coord_hidden = self.coord_lstm(coords_out.view(coords_out.size(0), -1).unsqueeze(0), self.coord_hidden)
 
         x = F.relu(self.bn_conv(self.cat_conv(x)))
-        x = F.relu(self.bn_conv(self.small_conv_cat(x)))
-        x = F.relu(self.bn_conv(self.small_conv_cat(x)))
-        x = F.relu(self.bn_conv(self.small_conv_cat(x)))
-        x = F.relu(self.bn_conv(self.small_conv_cat(x)))
-        x = F.relu(self.bn_conv(self.small_conv_cat(x)))
-        x = F.relu(self.bn_conv(self.small_conv_cat(x)))
+        x = F.relu(self.bn_small_conv(self.small_conv_cat(x)))
+        x = F.relu(self.bn_out(self.out_conv(x)))
+
         x, self.hidden = self.lstm(x.view(x.size(0), -1).unsqueeze(0), self.hidden)
-        x = x.squeeze(0)
-        x = F.relu(self.lin1(x))
+        x = x.view(-1, x.size(2))
+        x = F.relu(self.lin1(x.view(x.size(0), -1)))
+        x = F.relu(self.lin2(x))
+        x = F.relu(self.lin3(x))
         action_scores = self.action_head(x)
         state_values = self.value_head(x)
-        x_coord = self.x(x)
-        y_coord = self.y(x)
-        return F.softmax(action_scores, dim=-1), state_values, F.softmax(x_coord, dim=-1), F.softmax(y_coord, dim=-1)
+
+        return F.softmax(action_scores, dim=-1), state_values, F.softmax(coords.squeeze(0).squeeze(0))
 
 
 def finish_episode(model, optimizer, is_best, episode, won, lost, tied):
@@ -145,27 +161,27 @@ def finish_episode(model, optimizer, is_best, episode, won, lost, tied):
     saved_actions = model.saved_actions
     policy_losses = []
     value_losses = []
-    movement_losses = []
+    coord_losses = []
     rewards = []
     for r in model.rewards[::-1]:
         R = r + 0.99 * R
         rewards.insert(0, R)
     rewards = torch.Tensor(rewards)
     rewards = (rewards - rewards.mean()) / (rewards.std() + np.finfo(np.float32).eps)
-    for (log_prob, value, x_prob, y_prob), r in zip(saved_actions, rewards):
+    for (log_prob, value, coord_prob), r in zip(saved_actions, rewards):
         reward = r - value.data[0]
         policy_losses.append(-log_prob * Variable(reward))
-        movement_losses.append(-x_prob * Variable(reward) + -y_prob * Variable(reward))
+        coord_losses.append(-coord_prob * Variable(reward))
         value_losses.append(F.smooth_l1_loss(value, Variable(torch.Tensor([r])).cuda()))
     optimizer.zero_grad()
-    loss = torch.stack(policy_losses).sum() + torch.stack(value_losses).sum() + torch.stack(movement_losses).sum()
+    loss = torch.stack(policy_losses).sum() + torch.stack(coord_losses).sum() + torch.stack(value_losses).sum()
     print(loss)
     loss.backward()
     optimizer.step()
     del model.rewards[:]
     del model.saved_actions[:]
     model.hidden = model.init_hidden()
-    model.hidden2 = model.init_hidden()
+    model.coord_hidden = model.init_coord_hidden()
     save_checkpoint({
         'epoch': episode + 1,
         'state_dict': model.state_dict(),
@@ -174,6 +190,16 @@ def finish_episode(model, optimizer, is_best, episode, won, lost, tied):
         'lost': lost,
         'tied': tied
     }, is_best)
+
+    if episode % 25 == 0:
+        save_checkpoint({
+            'epoch': episode + 1,
+            'state_dict': model.state_dict(),
+            'optimizer': optimizer.state_dict(),
+            'won': won,
+            'lost': lost,
+            'tied': tied
+        }, False, filename="episode_" + str(episode) + ".pth.tar")
 
 
 policy = Policy()
@@ -185,7 +211,7 @@ class RLAgent(base_agent.BaseAgent):
         self.policy = policy
         if USE_CUDA and torch.cuda.is_available():
             self.policy = self.policy.cuda()
-        self.optimizer = optim.Adam(self.policy.parameters(), lr=0.0005)
+        self.optimizer = optim.Adam(self.policy.parameters(), lr=0.0007)
 
         self.previous_action = None
         self.previous_state = None
@@ -238,7 +264,8 @@ class RLAgent(base_agent.BaseAgent):
         super(RLAgent, self).step(obs)
         self.step_num += 1
         if obs.last():
-            reward = -30 if obs.reward is 0 else obs.reward * 50
+            reward = -50 if obs.reward is 0 else obs.reward * 100
+            # reward = obs.reward
             # reward = (obs.reward / (3 * (log((self.step_num / 2501) * 3, 5)))) / 3 if obs.reward <= 0 else obs.reward / (3 * (log((self.step_num / 2501) * 3, 5)))
             # self.policy.rewards = [x + reward for x in self.policy.rewards]
             self.policy.rewards.append(reward)
@@ -249,34 +276,40 @@ class RLAgent(base_agent.BaseAgent):
             self.previous_state = None
 
             self.move_number = 0
+
+            if obs.reward > 0:
+                self.won += 1
+            elif obs.reward == 0:
+                self.tied += 1
+            else:
+                self.lost += 1
+
+            self.won_arr.append(self.won / (self.won + self.lost + self.tied))
+            self.tied_arr.append(self.tied / (self.won + self.lost + self.tied))
+            self.lost_arr.append(self.lost / (self.won + self.lost + self.tied))
+
+            plt.close()
+            plt.title("Win, Loss, and Tie Percentage")
+            plt.ylabel("Percent")
+            plt.xlabel("Episode")
+            plt.plot(self.won_arr)
+            plt.plot(self.lost_arr)
+            plt.plot(self.tied_arr)
+            plt.legend(["Won", "Lost", "Tied"], loc='upper left')
+            if IS_RANDOM:
+                sample_file_name = "win_loss_tie_graph_random"
+            else:
+                sample_file_name = "win_loss_tie_graph"
+            plt.savefig(sample_file_name, overwrite=True)
+
             if IS_RANDOM is False:
                 # Train our network.
                 print("Episode Reward: ", sum(self.policy.rewards), self.policy.rewards[0])
                 print("Time Scalar: ", self.time_scalar)
                 print("Steps: ", self.step_num)
-                if obs.reward > 0:
-                    self.won += 1
-                elif obs.reward == 0:
-                    self.tied += 1
-                else:
-                    self.lost += 1
 
-                self.won_arr.append(self.won / (self.won + self.lost + self.tied))
-                self.tied_arr.append(self.tied / (self.won + self.lost + self.tied))
-                self.lost_arr.append(self.lost / (self.won + self.lost + self.tied))
                 # Keep track of the episode rewards.
                 self.episode_rewards.append(sum(self.policy.rewards) / len(self.policy.rewards))
-
-                plt.close()
-                plt.title("Win, Loss, and Tie Percentage")
-                plt.ylabel("Percent")
-                plt.xlabel("Episode")
-                plt.plot(self.won_arr)
-                plt.plot(self.lost_arr)
-                plt.plot(self.tied_arr)
-                plt.legend(["Won", "Lost", "Tied"], loc='upper left')
-                sample_file_name = "win_loss_tie_graph"
-                plt.savefig(sample_file_name, overwrite=True)
 
                 plt.close()
 
@@ -315,6 +348,10 @@ class RLAgent(base_agent.BaseAgent):
         barracks_y, barracks_x = (unit_type == UNITS.TERRAN_BARRACKS).nonzero()
         barracks_count = int(len(barracks_y) / 80)
 
+        # if self.step_num % 1500 == 0:
+        #     finish_episode(self.policy, self.optimizer, False, self.episodes, self.won, self.lost, self.tied)
+        #     self.step_num = 0
+
         if self.move_number == 0:
             self.move_number += 1
 
@@ -329,15 +366,19 @@ class RLAgent(base_agent.BaseAgent):
 
             if self.previous_action is not None:
                 # reward = obs.observation['score_cumulative'][0] - self.previous_cumulative_score_total
-                reward = -0.05
+                reward = -.05
                 killed_unit_score = obs.observation['score_cumulative'][5]
                 killed_building_score = obs.observation['score_cumulative'][6]
                 built_unit_score = obs.observation['score_cumulative'][8]
+                food_used = obs.observation['player'][3]
+                food_cap = obs.observation['player'][4]
                 # #
                 if killed_building_score > self.previous_killed_building_score:
-                    reward += 1
+                    reward += (killed_building_score - self.previous_killed_building_score) / 400
                 if killed_unit_score > self.previous_killed_units_score:
-                    reward += .1
+                    reward += (killed_unit_score - self.previous_killed_units_score) / 500
+                # if food_cap - food_used > 10:
+                #     reward -= 0.002 * (food_cap - food_used)
 
                 self.policy.rewards.append(reward)
                 self.previous_cumulative_score_total = obs.observation['score_cumulative'][0]
@@ -360,9 +401,9 @@ class RLAgent(base_agent.BaseAgent):
                     obs.observation['minimap'][6]
                 ])
                 other_state = np.array([
-                    np.resize(np.array(obs.observation['player'][1]), (64, 64)),
-                    np.resize(np.array(obs.observation['player'][2]), (64, 64)),
-                    np.resize(np.array(obs.observation['player'][8]), (64, 64))
+                    np.resize(np.array(obs.observation['player'][1]), (self.policy.input_size, self.policy.input_size)),
+                    np.resize(np.array(obs.observation['player'][2]), (self.policy.input_size, self.policy.input_size)),
+                    np.resize(np.array(obs.observation['player'][8]), (self.policy.input_size, self.policy.input_size))
                 ])
 
             if IS_RANDOM:
@@ -456,7 +497,7 @@ class RLAgent(base_agent.BaseAgent):
                     return actions.FunctionCall(ACTIONS.SMART_SCREEN, [MISC.QUEUED, target])
 
             if smart_action == ACTIONS.ACTION_BUILD_SUPPLY_DEPOT:
-                if supply_depot_count < 8 and ACTIONS.BUILD_SUPPLY_DEPOT in obs.observation['available_actions']:
+                if ACTIONS.BUILD_SUPPLY_DEPOT in obs.observation['available_actions']:
                     if cc_y.any():
                         target = [int(x), int(y)]
 
