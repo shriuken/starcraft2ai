@@ -1,3 +1,5 @@
+## Fall Essay
+
 Our project is about developing an AI bot to learn and play the real-time strategy game, StarCraft II. I think this is an academically
 interesting problem due to the real-time nature of Starcraft II and how this varies compared to previous work that's been done in the
 field, such as AlphaGo and and OpenAI's Dota2 bot (which has severe limitations). Compared to AlphaGo, Starcraft II requires more long
@@ -44,3 +46,21 @@ game of SC2. Afterwards, we can break this success down into more fine grained p
   - win rate of Race X against Blizzard's AI on diffulcty level Y playing Race Z
   - spectate the bot playing against itself. 
   - spectate the bot playing against ranked players of various races to view its performance.
+  
+## Spring Essay
+
+I had individual contributions to this project, both technical and non-technical. Initially, I explored the feasibility of developing 
+and building our A.I. within the C++ API provided us by Blizzard while Jon explored Python. During my exploration, I actually created 
+our first non-machine learned AI that we initially used as a baseline for determining what basic parameters and limitations we wanted 
+to use for our AI when we developed the machine learned version.  After our exploration was finished, we decided to utilize the Python 
+wrapper provided by DeepMind.  I was also responsible for writing many of the documents for our project, particularly the final design 
+poster.  The initial two versions of our poster draft were designed by me, and Jon and I collaborated to create the center most 
+graphics depicting the model of our AI. Since I plan on attending graduate school, learning the process for creating a poster was 
+extremely valuable to me. 
+
+This project was also my first foray into developing a project that utilized machine learning. After we decided on doing Python, I 
+spent much of my time trying to understand how to develop a reinforcement-learned AI and I became quite familiar with a Q-learned model.
+Arguably, my biggest obstacle for this project was keeping up with each new update to our AI’s model. Since this was my first time 
+working on a project in the ML space, I spent a large portion of my time attempting to learn about the Q-learned model we initially 
+started with. I successfully was able to understand this, but due to our project’s model constantly being updated, I did quickly fall 
+behind on that front.
