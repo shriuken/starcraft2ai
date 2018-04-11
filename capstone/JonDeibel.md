@@ -1,3 +1,5 @@
+## Fall Essay
+
 Our senior design project is centered around building an AI to play the game
 Starcraft 2. This poses a lot of challenges to not just our team, but to
 the AI world as a whole. The seemingly unsolved problem is dealing with long term
@@ -49,3 +51,5 @@ similar to the previous model, to give that reinforcement learning's model or Q
 function a starting point to which it can then play games against itself to refine
 that function. At this point, the hope is that the agent can then play a full
 game of starcraft by itself.
+
+## Spring Essay
