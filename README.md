@@ -25,7 +25,7 @@ This document is adapted, in part, from the original [project description](https
 
 ## Abstract
 
-There have been many recent advances in game-playing AIs, such as the [Dota2 AI](https://blog.openai.com/dota-2/) and [AlphaGo](https://deepmind.com/research/alphago/). With this project, we aim to explore the use of conventional and cutting edge ML techniques to create a self-learning [Starcraft II (SC2)](https://www.starcraft2.com/en-us/) AI agent that can play against Blizzard AI.
+There have been many recent advances in game-playing AIs, such as the [Dota2 AI](https://blog.openai.com/dota-2/) and [AlphaGo](https://deepmind.com/research/alphago/). With this project, we explored the use of conventional and cutting edge ML techniques to create a self-learning [Starcraft II (SC2)](https://www.starcraft2.com/en-us/) AI agent capable of defeating Blizzard's Very Easy AI.
 
 ### Team Members
 
@@ -39,12 +39,12 @@ Dr. Ali Minai - http://www.ece.uc.edu/~aminai/
 
 ## Project Description
 
-Inspired by recent advances in game-playing AI, we are attempting to address a similarly themed, albeit different problem - creating an SC2 AI agent that operates at human APM (actions per minute), up to ~300apm. Current SC2 AI agents abuse the fact that agents are able to take an inhuman number of actions extraordinarily quickly (such as 5000apm). Our goal is to restrict APM down to ~300apm in order to model our AI off of human capabilities and to more-effectively learn  decisions. With a hard-limit of ~300apm, any given action taken will have more importance than if the bot had a higher limit, such as ~5000apm. 
+Inspired by recent advances in game-playing AI, we are attempting to address a similarly themed, albeit different problem - creating an SC2 AI agent that operates at human APM (actions per minute), up to ~400apm. Current SC2 AI agents abuse the fact that agents are able to take an inhuman number of actions extraordinarily quickly (such as 5000apm). Our initial goal was to restrict APM down to ~300apm in order to model our AI off of human capabilities and to more-effectively learn  decisions. However, we settled on an upper limit of ~480apm, which is still human attainable by the most skilled players. With a hard-limit of ~480apm, any given action taken will have more importance than if the bot had a higher limit, such as ~5000apm. 
 
 We are scoping our project in the following manner:
   * the agent will play as [Terran](http://us.battle.net/sc2/en/game/race/terran/) 
-  * against a (yet-to-be-determined) stock Blizzard AI controlled target race
-  * on a (yet-to-be-determined) 1v1 ladder map.
+  * against a Very Easy Terran AI provided in the retail version of the game
+  * on the maps Simple64 and flat64.
   
 ## User Stories & Design Diagrams
 
@@ -80,10 +80,12 @@ Combined [Task List, Timeline, and Effort Matrix](https://github.com/shriuken/st
 ## Slideshow
 
 ### Slides
-[Google Presentation](https://docs.google.com/presentation/d/1Hcb6aYpbip0fVUfoEqo3Y5zmzDAUOA4cRRBE9JkhCWU/edit?usp=sharing).
+[Fall Presentation](https://docs.google.com/presentation/d/1Hcb6aYpbip0fVUfoEqo3Y5zmzDAUOA4cRRBE9JkhCWU/edit?usp=sharing).
+[Spring Presentation](https://docs.google.com/presentation/d/1L0_xcz8vSwR03VdKzz51-6sj2Cy9ZGxO8XQKX-KbHcY/edit?usp=sharing).
 
 ### Recorded Presentation
-[Video](https://drive.google.com/file/d/0BwE7gBKwLy1lMGRQa0wtWGstdmM/view).
+[Fall Video](https://drive.google.com/file/d/0BwE7gBKwLy1lMGRQa0wtWGstdmM/view).
+A recorded presentation was not created for Spring Semester.
 
 ## [Self Assessment Essays](https://github.com/shriuken/starcraft2ai/tree/master/capstone)
 
