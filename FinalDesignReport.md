@@ -66,7 +66,7 @@ Each member wrote their own assesment essays.
 | Learning the basics of Reinforcement Learning | 25 Hours | Kyle Arens, Jon Deibel, Ryan Benner |
 | Understanding C++/Python API | 10 Hours | Jon Deibel, Ryan Benner, Kyle Arens |
 | Creation of baseline AI/First RL based AI | 10 Hours | Jon Deibel, Ryan Benner |
-| Documentation | 5 Hours | Ryan Benner, Kyle Arens, Jon Deibel |
+| Documentation | 10 Hours | Ryan Benner, Kyle Arens, Jon Deibel |
 | Reading + Understanding AlphaGo | 5 Hours | Ryan Benner, Kyle Arens, Jon Deibel |
 | | | |
 | **Spring Semester** |
