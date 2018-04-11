@@ -8,7 +8,7 @@
 1. [User Manual](https://github.com/shriuken/starcraft2ai/blob/master/FinalDesignReport.md#user-manual)
     1. [Manual](https://github.com/shriuken/starcraft2ai/blob/master/FinalDesignReport.md#manual)
     1. [FAQ](https://github.com/shriuken/starcraft2ai/blob/master/FinalDesignReport.md#faq)
-1. [Final PPT Presentation](https://docs.google.com/presentation/d/1L0_xcz8vSwR03VdKzz51-6sj2Cy9ZGxO8XQKX-KbHcY/edit?usp=sharing)
+1. [Final PPT Presentation](https://github.com/shriuken/starcraft2ai/blob/master/FinalDesignReport.md#final-ppt-presentation)
 1. [Final Expo Poster](https://github.com/shriuken/starcraft2ai/blob/master/FinalDesignReport.md#expo-poster)
 1. [Self-Assessment Essays](https://github.com/shriuken/starcraft2ai/blob/master/FinalDesignReport.md#self-assessment-essays)
     1. [Initial Assessments](https://github.com/shriuken/starcraft2ai/blob/master/FinalDesignReport.md#fall-essays)
