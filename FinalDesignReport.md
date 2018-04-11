@@ -62,11 +62,22 @@ Each member wrote their own assesment essays.
 
 | Work | Time | Team Members |
 | ---- | ---- | ------------ |
+| **Fall Semester** |
 | Learning the basics of Reinforcement Learning | 25 Hours | Kyle Arens, Jon Deibel, Ryan Benner |
 | Understanding C++/Python API | 10 Hours | Jon Deibel, Ryan Benner, Kyle Arens |
 | Creation of baseline AI/First RL based AI | 10 Hours | Jon Deibel, Ryan Benner |
 | Documentation | 5 Hours | Ryan Benner, Kyle Arens, Jon Deibel |
 | Reading + Understanding AlphaGo | 5 Hours | Ryan Benner, Kyle Arens, Jon Deibel |
+| | | |
+| **Spring Semester** |
+| Model Improvements to AI | 50 Hours | Jon Deibel |
+| Running Test Cases | 20 Hours | Ryan Benner, Jon Deibel |
+| Senior Design Expo | 4 Hours | Kyle Arens, Ryan Benner, Jon Deibel |
+| Senior Design Poster | 25 Hours | Ryan Benner, Jon Deibel |
+| Final Design Report | 4 Hours | Ryan Benner |
+| Self Assessments | 2 Hours | Kyle Arens, Ryan Benner, Jon Deibel |
+| Test Plans | 6 Hours | Kyle Arens, Ryan Benner, Jon Deibel |
+| User Docs & FAQ | 10 Hours | Kyle Arens, Ryan Benner, Jon Deibel |
 
 ## Budget
 
