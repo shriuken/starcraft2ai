@@ -73,7 +73,7 @@ Each member wrote their own assesment essays.
 | Model Improvements to AI | 50 Hours | Jon Deibel |
 | Running Test Cases | 25 Hours | Kyle Arens, Ryan Benner, Jon Deibel |
 | Senior Design Expo | 4 Hours | Kyle Arens, Ryan Benner, Jon Deibel |
-| Senior Design Poster | 25 Hours | Ryan Benner, Jon Deibel |
+| Senior Design Poster | 10 Hours | Ryan Benner, Jon Deibel |
 | Final Design Report | 4 Hours | Ryan Benner |
 | Self Assessments | 2 Hours | Kyle Arens, Ryan Benner, Jon Deibel |
 | Test Plans | 6 Hours | Kyle Arens, Ryan Benner, Jon Deibel |
