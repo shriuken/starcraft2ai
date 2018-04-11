@@ -25,6 +25,20 @@ pip3 install torchvision`
   * If you want to customize your installation, please visit [PyTorch](http://pytorch.org/).
   
 ## Running starcraft2ai
+The starcraft2ai project is executed from the command line, or can be run from an IDE. If you wish to run it out of the box from our repository, there are a few major flags that should be set, and steps that should be taken.
+
+1. First off, if you wish to run using a model that we have already begun, ensure that the flags at the top of QAgent.py are set as follows below. If you wish to use a new model, set 'resume' to FALSE.
+  * DATA_FILE = 'sparse_agent_data'
+  * USE_CUDA = True
+  * IS_RANDOM = False
+  * resume = True
+  * resume_best = False
+  * evaluate = False
+2. After ensuring these flags are set correctly, navigate to the src folder within your starcraft2ai directory.
+3. From there, run the following command:
+  * python3 agent.py --map Simple64 --agent QAgent.RLAgent --agent_race T --max_agent_steps 0 --game_steps_per_episode 25000 --difficulty 1
+4. This will launch the game in a new window, and you will be able to follow the progress of the model in both that new window, and the command line.
+  
 
 # FAQ
 * Q: Do I need to buy SC2?
