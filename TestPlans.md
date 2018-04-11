@@ -25,7 +25,7 @@ We have two overall approaches to to testing our Starcraft 2 AI - code coverage 
 | FST 2.7 | Blackbox |
 | FST 2.8 | Performance Test Indication |
 | FST 2.9 | Integration |
-| RESULT | ??? |
+| RESULT | Pass - 20%, Fail - 80% |
 | | |
 | FST 3.1 | Full-System Test 3 |
 | FST 3.2 | To ensure that we have a bot capable of handling different skill levels and styles of Blizzard A.I. bots. |
@@ -36,7 +36,7 @@ We have two overall approaches to to testing our Starcraft 2 AI - code coverage 
 | FST 3.7 | Blackbox |
 | FST 3.8 | Performance Test Indication |
 | FST 3.9 | Integration |
-| RESULT | ??? |
+| RESULT | Pass - 1%, Fail - 99% |
 | | |
 | FST 4.1 | Full-System Test 4 |
 | FST 4.2 | To ensure that we have a bot capable of handling different skill levels and styles of Blizzard A.I. bots. |
@@ -47,7 +47,7 @@ We have two overall approaches to to testing our Starcraft 2 AI - code coverage 
 | FST 4.7 | Blackbox |
 | FST 4.8 | Performance Test Indication |
 | FST 4.9 | Integration |
-| RESULT | ??? |
+| RESULT | Pass - 80%, Fail - 20% |
 | | |
 | FST 5.1 | Full-System Test 5 |
 | FST 5.2 | To ensure that we have a bot capable of handling different skill levels and styles of Blizzard A.I. bots. |
@@ -58,7 +58,7 @@ We have two overall approaches to to testing our Starcraft 2 AI - code coverage 
 | FST 5.7 | Blackbox |
 | FST 5.8 | Performance Test Indication |
 | FST 5.9 | Integration |
-| RESULT | ??? |
+| RESULT | Pass - 12%, Fail - 88% |
 | | |
 | FST 6.1 | Full-System Test 6 |
 | FST 6.2 | To ensure that we have a bot capable of handling different skill levels and styles of Blizzard A.I. bots. |
@@ -69,7 +69,7 @@ We have two overall approaches to to testing our Starcraft 2 AI - code coverage 
 | FST 6.7 | Blackbox |
 | FST 6.8 | Performance Test Indication |
 | FST 6.9 | Integration |
-| RESULT | ??? |
+| RESULT | Pass - 0%, Fail - 100% |
 | | |
 | FST 7.1 | Full-System Test 7 |
 | FST 7.2 | To ensure that we have a bot capable of handling different skill levels and styles of Blizzard A.I. bots. |
@@ -80,7 +80,7 @@ We have two overall approaches to to testing our Starcraft 2 AI - code coverage 
 | FST 7.7 | Blackbox |
 | FST 7.8 | Performance Test Indication |
 | FST 7.9 | Integration |
-| RESULT | ??? |
+| RESULT | Pass - 80%, Fail - 20% |
 | | |
 | FST 8.1 | Full-System Test 8 |
 | FST 8.2 | To ensure that we have a bot capable of handling different skill levels and styles of Blizzard A.I. bots. |
@@ -91,7 +91,7 @@ We have two overall approaches to to testing our Starcraft 2 AI - code coverage 
 | FST 8.7 | Blackbox |
 | FST 8.8 | Performance Test Indication |
 | FST 8.9 | Integration |
-| RESULT | ??? |
+| RESULT | Pass - 9%, Fail - 91% |
 | | |
 | FST 9.1 | Full-System Test 9 |
 | FST 9.2 | To ensure that we have a bot capable of handling different skill levels and styles of Blizzard A.I. bots. |
@@ -102,7 +102,7 @@ We have two overall approaches to to testing our Starcraft 2 AI - code coverage 
 | FST 9.7 | Blackbox |
 | FST 9.8 | Performance Test Indication |
 | FST 9.9 | Integration |
-| RESULT | ??? |
+| RESULT | Pass - 0%, Fail - 100% |
 | | |
 
 # Misc
