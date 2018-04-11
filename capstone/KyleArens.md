@@ -1,10 +1,4 @@
-Final two paragraphs on your motivation and preliminary project approach –Discuss why you are motivated/excited to participate in the project –Discuss your preliminary approach to designing a solution –Discuss what your expected results and accomplishments will be –Discuss how you will evaluate your contributions: how will you know when you are done and whether or not you have done a good job?
-
-• Requirement: Minimum 6 sentences per paragraph
-Submission should be as an included file in your team project repository. It is recommended that you create a Capstone subdirectory in your repo to hold all essays.
-
-______________________________________________________________________________________________________________________
-
+## Fall Essay
 The goal of this project is to create an AI to learn and play the game Starcraft 2. Although AIs have been created
 previously, there have been consistent flaws in them that prevent them from being considered truly successful.
 It has been well established that machines are more successful at games in which the markovian property is prevalent.
@@ -46,3 +40,5 @@ tangible and measurable output: is our AI winning its games? In addition to that
 Is it putting up a decent contest? To begin approaching this, the simplest way to begin is likely a simple logistic
 regression across a set of gameplay data. From there, that model can be refined by moving into a reinforcement based system
 with supervision. Ideally, the AI will be able to play a game by itself at the end of this project.
+
+## Spring Essay
