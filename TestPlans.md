@@ -14,7 +14,7 @@ We have two overall approaches to to testing our Starcraft 2 AI - code coverage 
 | FST 1.7 | Blackbox |
 | FST 1.8 | Performance Test Indication |
 | FST 1.9 | Integration |
-| RESULT | ??? |
+| RESULT | Pass - 80%, Fail - 20% |
 | | |
 | FST 2.1 | Full-System Test 2 |
 | FST 2.2 | To ensure that we have a bot capable of handling different skill levels and styles of Blizzard A.I. bots. |
