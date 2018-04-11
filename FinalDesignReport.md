@@ -5,17 +5,17 @@
 1. [Readme](https://github.com/shriuken/starcraft2ai/blob/master/README.md)
 1. [Project Description](https://github.com/shriuken/starcraft2ai/blob/master/README.md#abstract)
 1. [Interface Specification]()
-1. [Test Plan and Results]()
-1. [User Manual]()
-    1. [Manual]()
-    1. [FAQ]()
+1. [Test Plan and Results](https://github.com/shriuken/starcraft2ai/blob/master/FinalDesignReport.md#test-plan-and-results)
+1. [User Manual](https://github.com/shriuken/starcraft2ai/blob/master/FinalDesignReport.md#user-manual)
+    1. [Manual](https://github.com/shriuken/starcraft2ai/blob/master/FinalDesignReport.md#manual)
+    1. [FAQ](https://github.com/shriuken/starcraft2ai/blob/master/FinalDesignReport.md#faq)
 1. [Final PPT Presentation](https://docs.google.com/presentation/d/1L0_xcz8vSwR03VdKzz51-6sj2Cy9ZGxO8XQKX-KbHcY/edit?usp=sharing)
-1. [Final Expo Poster]()
-1. [Self-Assessment Essays]()
-    1. [Initial Assessments]()
-    1. [Final Assessments]()
-1. [Summary of Hours and Justification]()
-1. [Budget](https://github.com/shriuken/starcraft2ai/blob/master/README.md#budget)
+1. [Final Expo Poster](https://github.com/shriuken/starcraft2ai/blob/master/FinalDesignReport.md#expo-poster)
+1. [Self-Assessment Essays](https://github.com/shriuken/starcraft2ai/blob/master/FinalDesignReport.md#self-assessment-essays)
+    1. [Initial Assessments](https://github.com/shriuken/starcraft2ai/blob/master/FinalDesignReport.md#fall-essays)
+    1. [Final Assessments](https://github.com/shriuken/starcraft2ai/blob/master/FinalDesignReport.md#spring-essays)
+1. [Summary of Hours and Justification](https://github.com/shriuken/starcraft2ai/blob/master/FinalDesignReport.md#summary-of-hours-and-justification)
+1. [Budget](https://github.com/shriuken/starcraft2ai/blob/master/FinalDesignReport.md#budget)
 
 ## Project Description
 
@@ -28,9 +28,11 @@ We are scoping our project in the following manner:
   
 ## Interface Specification
 
-## [Test Plan and Results](https://github.com/shriuken/starcraft2ai/blob/master/TestPlans.md)
+## Test Plan and Results
 
-## [User Manual](https://github.com/shriuken/starcraft2ai/blob/master/UserDocs.md)
+[Test Plan and Results Doc](https://github.com/shriuken/starcraft2ai/blob/master/TestPlans.md)
+
+## User Manual
 
 ### [Manual](https://github.com/shriuken/starcraft2ai/blob/master/UserDocs.md#user-docs)
 ### [FAQ](https://github.com/shriuken/starcraft2ai/blob/master/UserDocs.md#faq)
@@ -41,7 +43,7 @@ We are scoping our project in the following manner:
 ## Expo Poster
 [Poster PDF](https://github.com/shriuken/starcraft2ai/blob/master/Senior%20Design%20Poster.pdf)
 
-## [Self Assessment Essays](https://github.com/shriuken/starcraft2ai/tree/master/capstone)
+## Self Assessment Essays
 
 Each member wrote their own assesment essays.
 
