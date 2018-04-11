@@ -3,7 +3,7 @@
 ## Table of Contents
 
 1. [Readme](https://github.com/shriuken/starcraft2ai/blob/master/README.md)
-1. [Project Description](https://github.com/shriuken/starcraft2ai/blob/master/README.md#abstract)
+1. [Project Description](https://github.com/shriuken/starcraft2ai/blob/master/FinalDesignReport.md#project-description)
 1. [Interface Specification]()
 1. [Test Plan and Results](https://github.com/shriuken/starcraft2ai/blob/master/FinalDesignReport.md#test-plan-and-results)
 1. [User Manual](https://github.com/shriuken/starcraft2ai/blob/master/FinalDesignReport.md#user-manual)
