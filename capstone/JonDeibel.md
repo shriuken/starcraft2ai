@@ -53,3 +53,12 @@ that function. At this point, the hope is that the agent can then play a full
 game of starcraft by itself.
 
 ## Spring Essay
+In the first semester I spent a lot of time learning about reinforcement learning and
+relaying it to my team. I then found and sent out resources for my group mates to read and
+learn. I spent a bit of time working with the group in order to create an initial plan of attack. From
+there I built the first Q-learning prototype.
+In the second semester I refactored the code to be a little more modular and easier to try
+out different ideas. I spent time researching pytorch and relaying my findings so that we could
+use it as a tool to build our model. I then used pytorch to convert our basic Q-learning model
+into a Deep Q-learning model that was able to take a multidimensional input. After that I
+implemented an actor-critic algorithm for learning.
