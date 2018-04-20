@@ -186,7 +186,7 @@ The starcraft2ai project is executed from the command line, or can be run from a
 
 
 ## Final PPT Presentation
-See attached powerpoint.
+See attached presentation slide deck pdf.
 
 ## Expo Poster
 See attached poster PDF.
